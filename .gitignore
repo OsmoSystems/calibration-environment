@@ -1,0 +1,9 @@
+# Python
+*.egg_info/
+
+# Tests
+.tox/
+.pytest_cache/
+
+# Mypy type checking
+.mypy_cache/

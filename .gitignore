@@ -1,8 +1,14 @@
-# Python
-*.egg_info/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+*.egg-info/
+
+# Unit test / coverage reports
+.tox/
 
 # Tests
-.tox/
 .pytest_cache/
 
 # Mypy type checking

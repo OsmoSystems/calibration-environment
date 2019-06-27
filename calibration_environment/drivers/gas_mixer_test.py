@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import pytest
 
-import calibration_environment.drivers.mfc as module
+import calibration_environment.drivers.gas_mixer as module
 
 
 @pytest.mark.parametrize(
@@ -15,14 +15,27 @@ def test_has_low_feed_pressure(alarm_str, expected):
 
 
 class TestPpbConversions:
-    def test_ppb_to_fraction(self):
+    fractions_and_corresponding_ppbs = [
+        (0.005, "5000000"),
+        (0, "0"),
+        (math.pi / 10, "314159265"),
+    ]
+
+    @pytest.mark.parametrize("fraction, ppb", fractions_and_corresponding_ppbs)
+    def test_ppb_to_fraction(self, fraction, ppb):
         assert module._ppb_to_fraction("5000000") == 0.005
 
-    def test_fraction_to_ppb(self):
-        assert module._fraction_to_ppb(0.005) == "5000000"
+    @pytest.mark.parametrize("fraction, ppb", fractions_and_corresponding_ppbs)
+    def test_fraction_to_ppb(self, fraction, ppb):
+        assert module._fraction_to_ppb_str(fraction) == ppb
 
-    def test_fraction_to_ppb_rounding(self):
-        assert module._fraction_to_ppb(math.pi / 10) == "314159265"
+    @pytest.mark.parametrize("from_mfc, expected", [("------", 0), (str(1e8), 0.1)])
+    def _parse_flow_fraction(self, from_mfc, expected):
+        assert module._fraction_to_ppb_str(from_mfc) == expected
+
+
+# class TestSendSequenceWithExpectedResponses:
+#     def test_send_sequence_with_expected_responses
 
 
 class TestParseMixerStatus:
@@ -74,6 +87,22 @@ class TestParseMixerStatus:
                         "low feed pressure alarm - O2 source gas": False,
                         "N2 fraction in mix": 0,
                         "O2 source gas fraction in mix": 1,
+                    }
+                ),
+            ),
+            (
+                "Has not run yet - dashes for fractions",
+                "A 0 6 4096 10 7 4 2 Y - -00.01 +00.00 +0001464 ---------- "
+                "04096 +022.7 +00.00 +923 ---------- 04096 +018.5 +0.000 +541 ----------",
+                pd.Series(
+                    {
+                        "flow rate (SLPM)": 0,
+                        "mix pressure (mmHg)": -0.01,
+                        "low feed pressure alarm": False,
+                        "low feed pressure alarm - N2": False,
+                        "low feed pressure alarm - O2 source gas": False,
+                        "N2 fraction in mix": 0,
+                        "O2 source gas fraction in mix": 0,
                     }
                 ),
             ),

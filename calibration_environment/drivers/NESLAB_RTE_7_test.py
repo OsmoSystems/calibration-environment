@@ -157,7 +157,7 @@ class TestConstructCommandPacket:
             ("Read Setpoint", None, b"\xCA\x00\x01\x70\x00\x8E"),
             ("Read Low Temperature Limit", None, b"\xCA\x00\x01\x40\x00\xBE"),
             ("Read High Temperature Limit", None, b"\xCA\x00\x01\x60\x00\x9E"),
-            ("Read Heat Proportional Band (P)", None, b"\xCA\x00\x01\x71\x00\x8D"),
+            ("Read Heat Proportional Band", None, b"\xCA\x00\x01\x71\x00\x8D"),
             ("Read Heat Integral", None, b"\xCA\x00\x01\x72\x00\x8C"),
             ("Read Heat Derivative", None, b"\xCA\x00\x01\x73\x00\x8B"),
             ("Read Cool Proportional Band", None, b"\xCA\x00\x01\x74\x00\x8A"),
@@ -171,3 +171,103 @@ class TestConstructCommandPacket:
         packet = module._construct_command_packet(command_name, data=data)
         # hexlify to make error message more readable
         assert hexlify(packet.to_bytes()) == hexlify(expected_packet_bytes)
+
+
+class TestConstructSettingsCommandPacket:
+    def test_construct_settings_command_packet(self):
+        actual_packet = module._construct_settings_command_packet()
+        expected_packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x81,
+            data_bytes_count=0x08,
+            data_bytes=b"\x01\x01\x02\x02\x02\x00\x02\x01",
+            checksum=0x6A,
+        )
+        assert actual_packet == expected_packet
+
+
+class TestParseSettingsDataBytes:
+    def test_parse_settings_data_bytes(self):
+        actual = module._parse_settings_data_bytes(b"\x01\x01\x02\x02\x02\x00\x02\x01")
+        expected = module.OnOffArraySettings(1, 1, 2, 2, 2, 0, 2, 1)
+
+        assert actual == expected
+
+
+class TestValidateSettings:
+    def test_validate_settings_does_not_raise_if_valid(self):
+        module._validate_settings(module.OnOffArraySettings(1, 1, 2, 2, 2, 0, 2, 1))
+
+    def test_validate_settings_raises_on_single_error(self):
+        with pytest.raises(ValueError):
+            module._validate_settings(module.OnOffArraySettings(0, 1, 2, 2, 2, 0, 2, 1))
+
+    def test_validate_settings_raises_on_multiple_errors(self):
+        with pytest.raises(ValueError):
+            module._validate_settings(module.OnOffArraySettings(0, 1, 2, 2, 2, 1, 2, 1))
+
+
+class TestCheckForErrorResponse:
+    def test_check_for_error_response_returns_none_on_normal_response(self):
+        serial_packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x20,
+            data_bytes_count=0x00,
+            data_bytes=b"",
+            checksum=0xDE,
+        )
+
+        assert module._check_for_error_response(serial_packet) is None
+
+    def test_check_for_error_response_identifies_bad_command_error_type(self):
+        serial_packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x0F,
+            data_bytes_count=0x02,
+            data_bytes=b"\x01\x99",
+            checksum=0x53,
+        )
+
+        with pytest.raises(module.ErrorResponse) as e:
+            module._check_for_error_response(serial_packet)
+
+        print(e.value)
+        assert "Bad Command" in str(e.value)
+
+    def test_check_for_error_response_identifies_bad_checksum_error_type(self):
+        serial_packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x0F,
+            data_bytes_count=0x02,
+            data_bytes=b"\x03\x99",
+            checksum=0x51,
+        )
+
+        with pytest.raises(module.ErrorResponse) as e:
+            module._check_for_error_response(serial_packet)
+
+        assert "Bad Checksum" in str(e.value)
+
+    def test_check_for_error_response_identifies_echoed_command(self):
+        serial_packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x0F,
+            data_bytes_count=0x02,
+            data_bytes=b"\x03\x99",
+            checksum=0x51,
+        )
+
+        with pytest.raises(module.ErrorResponse) as e:
+            module._check_for_error_response(serial_packet)
+
+        assert f"0x{0x99:02X}" in str(e.value)

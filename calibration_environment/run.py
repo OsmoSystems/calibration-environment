@@ -130,16 +130,6 @@ def run(cli_args=None):
                 CALIBRATION_STATE = CalibrationState.WAIT_FOR_TEMPERATURE_EQ
 
                 while True:
-                    collect_data_to_csv(
-                        gas_mixer,
-                        water_bath,
-                        setpoint,
-                        calibration_configuration,
-                        sequence_iteration_count=sequence_iteration_count,
-                        write_headers_to_file=write_headers_to_file,
-                    )
-                    write_headers_to_file = False
-
                     if CALIBRATION_STATE == CalibrationState.WAIT_FOR_TEMPERATURE_EQ:
                         temperature_equilibrated = check_temperature_equilibrated(
                             water_bath, water_bath_com_port
@@ -184,6 +174,15 @@ def run(cli_args=None):
 
                     # Wait before collecting next datapoint
                     time.sleep(DATA_COLLECTION_INTERVAL_SECONDS)
+                    collect_data_to_csv(
+                        gas_mixer,
+                        water_bath,
+                        setpoint,
+                        calibration_configuration,
+                        sequence_iteration_count=sequence_iteration_count,
+                        write_headers_to_file=write_headers_to_file,
+                    )
+                    write_headers_to_file = False
 
             # Increment so we know which iteration we're on in the logs
             sequence_iteration_count += 1

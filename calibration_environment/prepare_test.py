@@ -8,7 +8,7 @@ from . import prepare as module
 
 class TestParseArgs(object):
     def test_all_args_parsed_appropriately(self):
-        args_in: List[str] = [
+        args_in = [
             "--sequence",
             "experiment.csv",
             "--o2fraction",
@@ -43,17 +43,22 @@ class TestParseArgs(object):
         with pytest.raises(SystemExit):
             module._parse_args(args_in)
 
+    def test_unrecognized_args_throws(self):
+        args_in = ["--extra"]
+        with pytest.raises(SystemExit):
+            module._parse_args(args_in)
+
 
 class TestGetCalibrationConfiguration(object):
     def test_all_configuration_options_returned(self, mocker):
         mocker.patch.object(
-            module, "_open_sequence_file"
+            module, "_open_setpoint_sequence_file"
         ).return_value = sentinel.setpoints
         mocker.patch.object(
             module, "_get_output_filename"
         ).return_value = sentinel.filepath
 
-        args_in: List[str] = [
+        args_in = [
             "--sequence",
             "experiment.csv",
             "--o2fraction",
@@ -68,7 +73,7 @@ class TestGetCalibrationConfiguration(object):
         expected_configuration = module.CalibrationConfiguration(
             sequence_csv="experiment.csv",
             setpoints=sentinel.setpoints,
-            com_port_args={"gas_mixer": "COM19", "water_bath": "COM20"},
+            com_port_args={"gas_mixer": "COM22", "water_bath": "COM21"},
             o2_source_gas_fraction=0.21,
             loop=True,
             dry_run=False,
@@ -77,6 +82,6 @@ class TestGetCalibrationConfiguration(object):
             collection_wait_time=300,
         )
 
-        actual_configuratin = module.get_calibration_configuration(args_in)
+        actual_configuration = module.get_calibration_configuration(args_in)
 
-        assert expected_configuration == actual_configuratin
+        assert expected_configuration == actual_configuration

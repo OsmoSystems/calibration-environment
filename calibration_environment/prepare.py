@@ -40,12 +40,11 @@ def _parse_args(args: List[str]) -> Dict:
         dest="o2_source_gas_fraction",
         required=True,
         type=float,
-        help="O2 percent connected to MFC2",
+        help="O2 fraction connected to MFC2",
     )
 
     arg_parser.add_argument(
         "--loop",
-        dest="loop",
         required=False,
         action="store_true",
         default=False,
@@ -54,7 +53,6 @@ def _parse_args(args: List[str]) -> Dict:
 
     arg_parser.add_argument(
         "--dry-run",
-        dest="dry_run",
         required=False,
         action="store_true",
         default=False,
@@ -79,7 +77,6 @@ def _parse_args(args: List[str]) -> Dict:
 
     arg_parser.add_argument(
         "--read-count",
-        dest="read_count",
         required=True,
         type=int,
         help="number of sensor readings to take at each setpoint",
@@ -93,11 +90,11 @@ def _parse_args(args: List[str]) -> Dict:
         help="time in seconds to wait between reading sensors",
     )
 
-    calibration_arg_namespace, _ = arg_parser.parse_known_args(args)
+    calibration_arg_namespace = arg_parser.parse_args(args)
     return vars(calibration_arg_namespace)
 
 
-def _open_sequence_file(sequence_csv_filepath):
+def _open_setpoint_sequence_file(sequence_csv_filepath):
     sequences = pd.read_csv(sequence_csv_filepath)
 
     return sequences
@@ -109,7 +106,7 @@ def _get_output_filename():
     return f"{start_date}_calibration.csv"
 
 
-def get_calibration_configuration(cli_args):
+def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfiguration:
     args = _parse_args(cli_args)
 
     com_port_args = {
@@ -119,7 +116,7 @@ def get_calibration_configuration(cli_args):
 
     calibration_configuration = CalibrationConfiguration(
         sequence_csv=args["sequence_csv"],
-        setpoints=_open_sequence_file(args["sequence_csv"]),
+        setpoints=_open_setpoint_sequence_file(args["sequence_csv"]),
         com_port_args=com_port_args,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],

@@ -36,7 +36,7 @@ def test_csv_is_created(tmp_path, mocker):
     ).return_value = CalibrationConfiguration(
         sequence_csv="experiment.csv",
         setpoints=setpoint_configuration,
-        com_port_args={"gas_mixer": "COM19", "water_bath": "COM20"},
+        com_port_args={"gas_mixer": "COM22", "water_bath": "COM21"},
         o2_source_gas_fraction=0.21,
         loop=False,
         dry_run=True,

@@ -1,3 +1,4 @@
+import sys
 import time
 from datetime import datetime
 
@@ -81,7 +82,10 @@ def collect_data(
     )
 
 
-def run(cli_args):
+def run(cli_args=None):
+    if cli_args is None:
+        # First argument is the name of the command itself, not an "argument" we want to parse
+        cli_args = sys.argv[1:]
     # Parse the configuration parameters from cli args
     calibration_configuration = get_calibration_configuration(cli_args)
 

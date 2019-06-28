@@ -1,6 +1,14 @@
 import serial
 
 """
+TODOs:
+ - Polish docstrings
+ - Manually test sending commands
+ - Update turn on/off to enforce things like precision
+ - Handle error responses from water bath
+"""
+
+"""
 Excerpts from the datasheet:
 (https://drive.google.com/open?id=1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz)
 
@@ -12,8 +20,7 @@ The master is a host computer, while the slave is the bath's controller. Only
 the master can initiate a communications transaction (half-duplex). The bath
 ends the transaction by responding to the master’s query. The protocol uses
 either an RS-232 or RS-485 serial interface with the default parameters: 19200
-baud, 1 start bit, 8 data bits, 1 stop bit, no parity, and for RS-485 a selectable
-address from 1 to 100.
+baud, 1 start bit, 8 data bits, 1 stop bit, no parity.
 
 The framing of the communications packet in both directions is:
 
@@ -53,12 +60,12 @@ RS_485_PREFIX = 0xCC
 RS_232_PREFIX = 0xCA
 
 # We're using RS-232, which means the device address is always 0x00 0x01
-PREFIX = RS_232_PREFIX
-DEVICE_ADDRESS_MSB = 0x00
-DEVICE_ADDRESS_LSB = 0x01
+DEFAULT_PREFIX = RS_232_PREFIX
+DEFAULT_DEVICE_ADDRESS_MSB = 0x00
+DEFAULT_DEVICE_ADDRESS_LSB = 0x01
 
 # Default protocol settings on the NESLAB RTE. They can be reconfigured.
-RS_232_PROTOCOL_DEFAULTS = {
+PROTOCOL_DEFAULTS = {
     "baudrate": 19200,
     "bytesize": serial.EIGHTBITS,
     "parity": serial.PARITY_NONE,
@@ -72,7 +79,7 @@ COMMAND_NAME_TO_HEX = {
     "Read Setpoint": 0x70,
     "Read Low Temperature Limit": 0x40,
     "Read High Temperature Limit": 0x60,
-    "Read Heat Proportional Band (P)": 0x71,
+    "Read Heat Proportional Band": 0x71,
     "Read Heat Integral": 0x72,
     "Read Heat Derivative": 0x73,
     "Read Cool Proportional Band": 0x74,
@@ -88,7 +95,7 @@ COMMAND_NAME_TO_HEX = {
     "Set Cool Proportional Band": 0xF4,  # (P = 0.1-99.9)
     "Set Cool Integral": 0xF5,  # (I = 0-9.99)
     "Set Cool Derivative": 0xF6,  # (D = 0-5.0)
-    # Exclude these as they have non-generic repsponses - handle them one-off:
+    # Exclude these as they have non-generic responses - handle them one-off:
     # "Read Acknowledge": 0x00,
     # "Read Status": 0x09,
     # "Set On/Off Array": 0x81,
@@ -103,11 +110,11 @@ QUALIFIER_HEX_TO_PRECISION = {
 }
 
 
-class ResponsePacket:
+class SerialPacket:
     """
     The framing of the communications packet in both directions is:
 
-    Lead char   0xCA (RS-232); or 0xCC (RS-485)
+    Prefix      0xCA (RS-232); or 0xCC (RS-485)
     Addr-MSB    Most significant byte of device address. Always 0x00.
     Addr-LSB    Least significant byte of device address
                     0x01 to 0x64 (1 - 100 decimal) for RS-485
@@ -122,33 +129,96 @@ class ResponsePacket:
                 (To perform a bitwise inversion, XOR the one byte sum with 0xFF hex.
     """
 
-    def __init__(self, response_bytes):
-        self.response_bytes: bytes = response_bytes
-        self.prefix: int = response_bytes[0]
-        self.device_address_msb: int = response_bytes[1]
-        self.device_address_lsb: int = response_bytes[2]
-        self.command: int = response_bytes[3]
-        self.data_bytes_count: int = response_bytes[4]
-        self.data_bytes: bytes = response_bytes[5:-1]
-        self.checksum: int = response_bytes[-1]
+    def __init__(
+        self,
+        prefix: int,
+        device_address_msb: int,
+        device_address_lsb: int,
+        command: int,
+        data_bytes_count: int,
+        data_bytes: bytes,
+        checksum: int = None,
+    ):
+        self._prefix = prefix
+        self._device_address_msb = device_address_msb
+        self._device_address_lsb = device_address_lsb
+        self.command = command
+        self._data_bytes_count = data_bytes_count
+        self.data_bytes = data_bytes
 
-        # TODO: torn about object-oriented vs. functional. Validate method inside constructor or as a separate function?
+        self._checksum = (
+            checksum
+            if checksum is not None
+            else _calculate_checksum(self._message_bytes)
+        )
+
         self.validate()
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    @classmethod
+    def from_bytes(cls, packet_bytes: bytes):
+        """ Constructs a SerialPacket by parsing a byte string (e.g. a response from the
+            water bath)
+        """
+
+        return cls(
+            prefix=packet_bytes[0],
+            device_address_msb=packet_bytes[1],
+            device_address_lsb=packet_bytes[2],
+            command=packet_bytes[3],
+            data_bytes_count=packet_bytes[4],
+            data_bytes=packet_bytes[5:-1],
+            checksum=packet_bytes[-1],
+        )
+
+    @classmethod
+    def from_command(cls, command: int, data_bytes: bytes = bytes([])):
+        """ Constructs a SerialPacket based around a command and the desired data to be
+            sent with that command
+        """
+        return cls(
+            prefix=DEFAULT_PREFIX,
+            device_address_msb=DEFAULT_DEVICE_ADDRESS_MSB,
+            device_address_lsb=DEFAULT_DEVICE_ADDRESS_LSB,
+            command=command,
+            data_bytes_count=len(data_bytes),
+            data_bytes=data_bytes,
+        )
+
+    def to_bytes(self):
+        return bytes([self._prefix]) + self._message_bytes + bytes([self._checksum])
+
+    @property
+    def _message_bytes(self):
+        """ Everything except first (prefix) and last (checksum) byte.
+            Used to compute checksum
+        """
+        return (
+            bytes([self._device_address_msb, self._device_address_lsb])
+            + bytes([self.command])
+            + bytes([self._data_bytes_count])
+            + self.data_bytes
+        )
 
     def validate(self):
         try:
-            assert self.prefix == PREFIX
-            assert self.device_address_msb == DEVICE_ADDRESS_MSB
-            assert self.device_address_lsb == DEVICE_ADDRESS_LSB
-            assert len(self.data_bytes) == self.data_bytes_count
-            assert calculate_checksum(self.response_bytes[1:-1]) == self.checksum
+            assert self._prefix == DEFAULT_PREFIX
+            assert self._device_address_msb == DEFAULT_DEVICE_ADDRESS_MSB
+            assert self._device_address_lsb == DEFAULT_DEVICE_ADDRESS_LSB
+            assert len(self.data_bytes) == self._data_bytes_count
+            assert _calculate_checksum(self._message_bytes) == self._checksum
         except AssertionError:
             # TODO: could do something fancier here to get more useful error messages.
-            raise ValueError(f"Reponse packet ({self.response_bytes}) invalid.")
+            raise ValueError(f"Serial packet ({str(self)}) invalid.")
 
 
-def calculate_checksum(message_bytes: bytes):
-    """ Calculate the checksum of the "message bytes"
+def _calculate_checksum(message_bytes: bytes) -> int:
+    """ Calculate the checksum of the "message bytes" of a serial packet
 
         From the datasheet, the checksum is:
             Bitwise inversion of the 1 byte sum of bytes beginning with the most
@@ -156,7 +226,8 @@ def calculate_checksum(message_bytes: bytes):
             To perform a bitwise inversion, "exclusive OR" the one byte sum with FF hex.
 
         Args:
-            message_bytes: everything except the first (prefix) and last (checksum) byte in the packet.
+            message_bytes: everything except the first (prefix) and last (checksum) byte
+            in the packet.
 
         Returns:
             The checksum
@@ -166,23 +237,7 @@ def calculate_checksum(message_bytes: bytes):
     return bitwise_inversion
 
 
-# TODO: could make or share a class for the command packet as well?
-def construct_command_packet(command: int, data_bytes: bytes = bytes([])):
-    data_bytes_count = len(data_bytes)
-
-    message_bytes = (
-        bytes([DEVICE_ADDRESS_MSB, DEVICE_ADDRESS_LSB])
-        + bytes([command])
-        + bytes([data_bytes_count])
-        + data_bytes
-    )
-
-    checksum = calculate_checksum(message_bytes)
-
-    return bytes([PREFIX]) + message_bytes + bytes([checksum])
-
-
-def parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
+def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
     """ Parse data bytes into an float value with appropriate precision.
 
         From the datasheet:
@@ -206,32 +261,41 @@ def parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
 
 
 def _send_command(comm_port: str, command_packet_bytes: bytes):
-    with serial.Serial(comm_port, timeout=1, **RS_232_PROTOCOL_DEFAULTS) as serial_port:
+    with serial.Serial(comm_port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
         serial_port.write(command_packet_bytes)
         response_bytes = serial_port.readline()
-        return ResponsePacket(response_bytes)
+        return SerialPacket.from_bytes(response_bytes)
 
 
-def send_command_and_parse_response(comm_port, command_name, data: float = None):
+def _construct_command_packet(command_name: str, data: int = None):
+    if data is None:
+        # Read commands don't include data
+        data_bytes = b""
+    else:
+        # Set commands' data is always multiplied by 10 to include 1 decimal of precision, and
+        # always sent as two bytes
+        data_as_10x_int = round(data * 10)
+        data_byte_count = 2
+        data_bytes = data_as_10x_int.to_bytes(data_byte_count, byteorder="big")
+
+    command = COMMAND_NAME_TO_HEX[command_name]
+
+    return SerialPacket.from_command(command, data_bytes)
+
+
+def send_command_and_parse_response(comm_port, command_name: str, data: float = None):
     """ Send a generic command to the water bath and parse the response data
     """
 
-    # Command data is always multiplied by 10 to include 1 decimal of precision and sent
-    # as two bytes
-    # TODO: I think the command data might actually need to change to match whatever
-    # precision the device is using (either 0.1 or 0.01)
-    data_bytes = (
-        round(data * 10).to_bytes(2, byteorder="big") if data is not None else b""
-    )
-    command = COMMAND_NAME_TO_HEX[command_name]
-    command_packet_bytes = construct_command_packet(command, data_bytes)
-    response_packet = _send_command(comm_port, command_packet_bytes)
+    command_serial_packet = _construct_command_packet(command_name, data)
+    response_packet = _send_command(comm_port, command_serial_packet.to_bytes())
 
     # TODO: handle error response from bath
 
-    return parse_data_bytes_as_float(response_packet.data_bytes)
+    return _parse_data_bytes_as_float(response_packet.data_bytes)
 
 
+# TODO: probably change this to a generic "initialize" function
 def turn_on(comm_port):
     """ The "Set On/Off" command has a unique data structure in which each data byte
         represents a single setting that can be toggled (including turning on/off the
@@ -252,11 +316,13 @@ def turn_on(comm_port):
 
         To just turn on and change nothing else:
             CA 00 01 81 08 01 02 02 02 02 02 02 02 66
-
     """
+
     # Hardcoded to turn on bath and change nothing else
     data_bytes = bytes.fromhex("01 02 02 02 02 02 02 02")
-    command_packet_bytes = construct_command_packet(command=0x81, data_bytes=data_bytes)
+    command_packet_bytes = SerialPacket.from_command(
+        command=0x81, data_bytes=data_bytes
+    )
     response_packet = _send_command(comm_port, command_packet_bytes)
 
     # TODO: parse the response to check that it turned on?

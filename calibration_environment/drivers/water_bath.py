@@ -298,9 +298,9 @@ def _send_command(port: str, command_packet: SerialPacket):
             serial_packet = SerialPacket.from_bytes(response_bytes)
         except Exception as e:
             raise InvalidResponse(
-                f"Unable to parse response from water bath."
-                f"Response bytes: {response_bytes}"
-                f"Error: {str(e)}"
+                f"Unable to parse response from water bath. \n"
+                f"Response bytes: {response_bytes}. \n"
+                f"Error: {str(e)}. \n"
             )
 
         _check_for_error_response(serial_packet)

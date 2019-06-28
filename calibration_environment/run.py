@@ -83,91 +83,97 @@ def collect_data(
 
 
 def run(cli_args=None):
-    if cli_args is None:
-        # First argument is the name of the command itself, not an "argument" we want to parse
-        cli_args = sys.argv[1:]
-    # Parse the configuration parameters from cli args
-    calibration_configuration = get_calibration_configuration(cli_args)
+    try:
+        if cli_args is None:
+            # First argument is the name of the command itself, not an "argument" we want to parse
+            cli_args = sys.argv[1:]
+        # Parse the configuration parameters from cli args
+        calibration_configuration = get_calibration_configuration(cli_args)
 
-    if calibration_configuration.dry_run:
-        from .drivers.stubs import gas_mixer
+        if calibration_configuration.dry_run:
+            from .drivers.stubs import gas_mixer
 
-        # TODO: add waterbath interface
-        water_bath = None
-    else:
-        from .drivers import gas_mixer  # type: ignore # shadow assignment warning
+            # TODO: add waterbath interface
+            water_bath = None
+        else:
+            from .drivers import gas_mixer  # type: ignore # shadow assignment warning
 
-        # TODO: add waterbath interface
-        water_bath = None
+            # TODO: add waterbath interface
+            water_bath = None
 
-    water_bath_com_port = calibration_configuration.com_port_args["water_bath"]
+        water_bath_com_port = calibration_configuration.com_port_args["water_bath"]
 
-    gas_mixer_com_port = calibration_configuration.com_port_args["gas_mixer"]
+        gas_mixer_com_port = calibration_configuration.com_port_args["gas_mixer"]
 
-    sequence_iteration_count = 0
-    write_headers_to_file = True
+        sequence_iteration_count = 0
+        write_headers_to_file = True
 
-    while True:
+        while True:
 
-        for i, setpoint in calibration_configuration.setpoints.iterrows():
+            for i, setpoint in calibration_configuration.setpoints.iterrows():
 
-            # TODO: Set the water bath temperature
-            # water_bath.set_temperature(water_bath_com_port, setpoint["temperature"])
+                # TODO: Set the water bath temperature
+                # water_bath.set_temperature(water_bath_com_port, setpoint["temperature"])
 
-            CALIBRATION_STATE = WAIT_FOR_T_EQ
+                CALIBRATION_STATE = WAIT_FOR_T_EQ
 
-            while True:
-                collect_data(
-                    gas_mixer,
-                    water_bath,
-                    setpoint,
-                    calibration_configuration,
-                    sequence_iteration_count=sequence_iteration_count,
-                    write_headers_to_file=write_headers_to_file,
-                )
-                write_headers_to_file = False
-
-                if CALIBRATION_STATE == WAIT_FOR_T_EQ:
-                    temperature_equilibrated = check_temperature_equilibrated(
-                        water_bath, water_bath_com_port
+                while True:
+                    collect_data(
+                        gas_mixer,
+                        water_bath,
+                        setpoint,
+                        calibration_configuration,
+                        sequence_iteration_count=sequence_iteration_count,
+                        write_headers_to_file=write_headers_to_file,
                     )
-                    if temperature_equilibrated:
-                        # Set the gax mixer ratio
-                        gas_mixer.start_constant_flow_mix(
-                            gas_mixer_com_port,
-                            setpoint["flow_rate_slpm"],
-                            setpoint["o2_target_gas_fraction"],
-                            calibration_configuration.o2_source_gas_fraction,
+                    write_headers_to_file = False
+
+                    if CALIBRATION_STATE == WAIT_FOR_T_EQ:
+                        temperature_equilibrated = check_temperature_equilibrated(
+                            water_bath, water_bath_com_port
                         )
-                        CALIBRATION_STATE = WAIT_FOR_GM_EQ
+                        if temperature_equilibrated:
+                            # Set the gax mixer ratio
+                            gas_mixer.start_constant_flow_mix(
+                                gas_mixer_com_port,
+                                setpoint["flow_rate_slpm"],
+                                setpoint["o2_target_gas_fraction"],
+                                calibration_configuration.o2_source_gas_fraction,
+                            )
+                            CALIBRATION_STATE = WAIT_FOR_GM_EQ
 
-                elif CALIBRATION_STATE == WAIT_FOR_GM_EQ:
-                    gas_mixer_equilibrated = check_gas_mixer_equilibrated(
-                        gas_mixer, gas_mixer_com_port
-                    )
-                    if gas_mixer_equilibrated:
-                        # Start tracking how long to stay at this setpoint
-                        setpoint_equilibration_start = datetime.now()
-                        CALIBRATION_STATE = WAIT_FOR_SETPOINT_TIMEOUT
+                    elif CALIBRATION_STATE == WAIT_FOR_GM_EQ:
+                        gas_mixer_equilibrated = check_gas_mixer_equilibrated(
+                            gas_mixer, gas_mixer_com_port
+                        )
+                        if gas_mixer_equilibrated:
+                            # Start tracking how long to stay at this setpoint
+                            setpoint_equilibration_start = datetime.now()
+                            CALIBRATION_STATE = WAIT_FOR_SETPOINT_TIMEOUT
 
-                elif CALIBRATION_STATE == WAIT_FOR_SETPOINT_TIMEOUT:
-                    setpoint_duration = datetime.now() - setpoint_equilibration_start
-                    if (
-                        setpoint_duration.total_seconds()
-                        > calibration_configuration.collection_wait_time
-                    ):
-                        break
-                else:
-                    raise ValueError(f"Ivalid calibration state {CALIBRATION_STATE}")
+                    elif CALIBRATION_STATE == WAIT_FOR_SETPOINT_TIMEOUT:
+                        setpoint_duration = (
+                            datetime.now() - setpoint_equilibration_start
+                        )
+                        if (
+                            setpoint_duration.total_seconds()
+                            > calibration_configuration.collection_wait_time
+                        ):
+                            break
+                    else:
+                        raise ValueError(
+                            f"Ivalid calibration state {CALIBRATION_STATE}"
+                        )
 
-                # Wait before collecting next datapoint
-                time.sleep(DATA_COLLECTION_INTERVAL)
+                    # Wait before collecting next datapoint
+                    time.sleep(DATA_COLLECTION_INTERVAL)
 
-        # Increment so we know which iteration we're on in the logs
-        sequence_iteration_count += 1
+            # Increment so we know which iteration we're on in the logs
+            sequence_iteration_count += 1
 
-        if not calibration_configuration.loop:
-            gas_mixer.stop_flow(gas_mixer_com_port)
-            # TODO
-            # water_bath.shutdown(water_bath_com_port)
-            return
+            if not calibration_configuration.loop:
+                break
+    finally:
+        gas_mixer.stop_flow(gas_mixer_com_port)
+        # TODO
+        # water_bath.shutdown(water_bath_com_port)

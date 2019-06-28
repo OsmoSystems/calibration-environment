@@ -146,7 +146,7 @@ class SerialPacket:
 
         self.validate()
 
-    def __repr__(self):
+    def __str__(self):
         bytes_as_hex = f" ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
         return f"bytes: {bytes_as_hex}, attributes: {str(self.__dict__)}"
 
@@ -296,9 +296,11 @@ def _send_command(port: str, command_packet: SerialPacket):
 
         try:
             serial_packet = SerialPacket.from_bytes(response_bytes)
-        except ValueError as e:
+        except Exception as e:
             raise InvalidResponse(
-                f"Unable to parse response from water bath.\n Error: {str(e)}"
+                f"Unable to parse response from water bath."
+                f"Response bytes: {response_bytes}"
+                f"Error: {str(e)}"
             )
 
         _check_for_error_response(serial_packet)

@@ -10,6 +10,6 @@ setup(
     url="https://www.github.com/osmosystems/calibration-environment.git",
     packages=find_packages(),
     entry_points={},
-    install_requires=[],
+    install_requires=["pyserial"],
     include_package_data=True,
 )

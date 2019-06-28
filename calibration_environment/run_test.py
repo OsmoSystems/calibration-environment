@@ -3,6 +3,9 @@ import pandas as pd
 from .prepare import CalibrationConfiguration
 from . import run as module
 
+# Don't sleep when running tests
+module.DATA_COLLECTION_INTERVAL = 0
+
 
 def test_csv_is_created(tmp_path, mocker):
     output_filepath = tmp_path / "test.csv"
@@ -15,13 +18,16 @@ def test_csv_is_created(tmp_path, mocker):
         }
     )
 
+    # There are a minimum of 3 data points collected at each setpoint
+    # one in each state - WAIT_FOR_T_EQ, WAIT_FOR_GM_EQ, WAIT_FOR_SETPOINT_TIMEOUT
     expected_csv = pd.DataFrame(
         {
-            "setpoint_temperature": [15, 25],
-            "setpoint_flow_rate": [2.5, 2.5],
-            "setpoint_target_gas_fraction": [50, 50],
-            "o2_source_gas_fraction": [0.21, 0.21],
-            "stub_data": [1, 1],
+            "iteration": 0,
+            "setpoint_temperature": [15, 15, 15, 25, 25, 25],
+            "setpoint_flow_rate": 2.5,
+            "setpoint_target_gas_fraction": 50,
+            "o2_source_gas_fraction": 0.21,
+            "Stub data": 1,
         }
     )
 
@@ -35,8 +41,7 @@ def test_csv_is_created(tmp_path, mocker):
         loop=False,
         dry_run=True,
         output_csv=output_filepath,
-        read_count=1,
-        collection_wait_time=0.1,
+        collection_wait_time=0,  # Don't require any waiting during tests
     )
 
     module.run([])

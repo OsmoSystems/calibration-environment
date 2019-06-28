@@ -19,8 +19,6 @@ class TestParseArgs(object):
             "COM1",
             "--water-bath-port",
             "COM2",
-            "--read-count",
-            "4",
             "--wait-time",
             "300",
         ]
@@ -32,7 +30,6 @@ class TestParseArgs(object):
             "dry_run": True,
             "gas_mixer_com_port": "COM1",
             "water_bath_com_port": "COM2",
-            "read_count": 4,
             "collection_wait_time": 300,
         }
 
@@ -64,8 +61,6 @@ class TestGetCalibrationConfiguration(object):
             "--o2fraction",
             ".21",
             "--loop",
-            "--read-count",
-            "5",
             "--wait-time",
             "300",
         ]
@@ -78,7 +73,6 @@ class TestGetCalibrationConfiguration(object):
             loop=True,
             dry_run=False,
             output_csv=sentinel.filepath,
-            read_count=5,
             collection_wait_time=300,
         )
 

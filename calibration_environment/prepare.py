@@ -16,7 +16,6 @@ CalibrationConfiguration = namedtuple(
         "loop",
         "dry_run",
         "output_csv",
-        "read_count",
         "collection_wait_time",
     ],
 )
@@ -76,13 +75,6 @@ def _parse_args(args: List[str]) -> Dict:
     )
 
     arg_parser.add_argument(
-        "--read-count",
-        required=True,
-        type=int,
-        help="number of sensor readings to take at each setpoint",
-    )
-
-    arg_parser.add_argument(
         "--wait-time",
         dest="collection_wait_time",
         required=True,
@@ -122,7 +114,6 @@ def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfigurati
         loop=args["loop"],
         dry_run=args["dry_run"],
         output_csv=_get_output_filename(),
-        read_count=args["read_count"],
         collection_wait_time=args["collection_wait_time"],
     )
 

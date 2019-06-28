@@ -295,7 +295,10 @@ def get_gas_ids(port: str) -> pd.Series:
 
 
 def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> None:
-    """ Check that a given mix is possible on our mixer, raising ValueError if not. """
+    """ Check that a given mix is possible on our mixer, raising ValueError if not.
+    Raises:
+        ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
+    """
     o2_source_gas_max_flow = 2.5
     n2_max_flow = 10
     o2_source_gas_target = flow_rate_slpm * o2_source_gas_fraction
@@ -341,6 +344,10 @@ def start_constant_flow_mix(
 
     Returns:
         None
+
+    Raises:
+        UnexpectedMixerResponse if any mixer response is unexpected. There are currently no known causes for this.
+        ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
     """
     n2_fraction = 1 - target_o2_source_gas_fraction
     n2_ppb = _fraction_to_ppb_str(n2_fraction)
@@ -376,6 +383,10 @@ def stop_flow(port: str) -> None:
 
     Returns:
         None
+
+    Raises:
+        UnexpectedMixerResponse if the mixer is anything other than stopped with no alarms after this command.
+            Likely cause is that the mixer was already stopped due to an alarm.
     """
     # mnemonic: "MXRS" = "mixer run state"
     command = f"{DEVICE_ID} MXRS 2"

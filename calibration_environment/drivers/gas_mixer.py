@@ -309,10 +309,11 @@ def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> N
         f"Invalid mix: flow rate {flow_rate_slpm} SLPM, "
         f"O2 source gas fraction {o2_source_gas_fraction}. "
     )
+
     o2_source_gas_error = (
         (
             "O2 source gas mixer only goes up to "
-            f"{o2_source_gas_max_flow} but you are asking for {o2_source_gas_target}. "
+            f"{o2_source_gas_max_flow} but {o2_source_gas_target} is required for desired mix. "
         )
         if o2_source_gas_target > o2_source_gas_max_flow
         else ""
@@ -321,7 +322,7 @@ def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> N
     n2_error = (
         (
             f"N2 source gas mixer only goes up to "
-            f"{n2_max_flow} but you are asking for {n2_target}. "
+            f"{n2_max_flow} but {n2_target} is required for desired mix. "
         )
         if n2_target > n2_max_flow
         else ""
@@ -331,8 +332,20 @@ def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> N
         raise ValueError(f"{invalid_mix_message}{o2_source_gas_error}{n2_error}")
 
 
+def _get_o2_source_gas_fraction(target_o2_fraction, o2_source_gas_o2_fraction):
+    if target_o2_fraction > o2_source_gas_o2_fraction:
+        raise ValueError(
+            f"Cannot achieve O2 fraction of {target_o2_fraction} "
+            f"with source gas containing only {o2_source_gas_o2_fraction:.1%} O2"
+        )
+    return target_o2_fraction / o2_source_gas_o2_fraction
+
+
 def start_constant_flow_mix(
-    port: str, target_flow_rate_slpm: float, target_o2_source_gas_fraction: float
+    port: str,
+    target_flow_rate_slpm: float,
+    target_o2_fraction: float,
+    o2_source_gas_o2_fraction: float = 1,
 ) -> None:
     """ Commands mixer to start a constant flow rate mix
     This also resets any alarms.
@@ -340,8 +353,10 @@ def start_constant_flow_mix(
     Args:
         port: serial port to connect to.
         target_flow_rate_slpm: target flow rate, in SLPM
-        target_o2_source_gas_fraction: fraction of O2 source gas in the desired mix. Note that if the connected O2
-            source gas is not pure oxygen, this is not equivalent to the fraction of oxygen in the final mix
+        target_o2_fraction: fraction of O2 in the desired mix. Note that if the connected O2
+            source gas is not pure oxygen, this is not equivalent to the fraction of the O2 source gas in the final mix.
+        o2_source_gas_o2_fraction: Fraction of O2 in the source gas connected to mixer 2. Defaults to 1.
+            Used to calculate how much of the O2 source gas is required to hit the target O2 fraction.
 
     Returns:
         None
@@ -350,6 +365,9 @@ def start_constant_flow_mix(
         UnexpectedMixerResponse if any mixer response is unexpected. There are currently no known causes for this.
         ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
     """
+    target_o2_source_gas_fraction = _get_o2_source_gas_fraction(
+        target_o2_fraction, o2_source_gas_o2_fraction
+    )
     n2_fraction = 1 - target_o2_source_gas_fraction
     n2_ppb = _fraction_to_ppb_str(n2_fraction)
     o2_source_gas_ppb = _fraction_to_ppb_str(target_o2_source_gas_fraction)

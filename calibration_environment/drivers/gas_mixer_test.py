@@ -279,10 +279,47 @@ class TestAssertValidMix:
 
 
 class TestStartConstantFlowMix:
-    def smoke_test(self, mocker):
+    @pytest.mark.parametrize(
+        "target_o2_fraction, o2_source_gas_o2_fraction, expected_o2_source_gas_fraction",
+        [(1, 1, 1), (0.5, 1, 0.5), (0.5, 0.5, 1), (0.1, 0.2, 0.5)],
+    )
+    def test_get_o2_source_gas_fraction(
+        self,
+        target_o2_fraction,
+        o2_source_gas_o2_fraction,
+        expected_o2_source_gas_fraction,
+    ):
+        actual = module._get_o2_source_gas_fraction(
+            target_o2_fraction, o2_source_gas_o2_fraction
+        )
+        assert actual == expected_o2_source_gas_fraction
+
+    def test_get_o2_source_gas_fraction_errors_when_ratio_is_too_high(self):
+        with pytest.raises(ValueError, match="%"):
+            module._get_o2_source_gas_fraction(
+                target_o2_fraction=0.5, o2_source_gas_o2_fraction=0.2
+            )
+
+    def test_calls_appropriate_sequence(self, mocker):
+        # Most implementation details of this function are tested manually or verified by mypy.
+        # This is just a smoke test
         mock_send_sequence = mocker.patch.object(
             module, "_send_sequence_with_expected_responses"
         )
 
-        module.start_constant_flow_mix(sentinel.port, 5, 0.1)
-        mock_send_sequence.assert_called()
+        module.start_constant_flow_mix(
+            sentinel.port,
+            target_flow_rate_slpm=5,
+            target_o2_fraction=0.1,
+            o2_source_gas_o2_fraction=0.5,
+        )
+        mock_send_sequence.assert_called_with(
+            sentinel.port,
+            [
+                ("A MXRM 3", "A 3"),
+                ("A MXRFF 2.5", "A 2.50 7 SLPM"),
+                ("A MXMF 800000000, 200000000", "A 800000000 200000000"),
+                ("A MXRFF 5", "A 5.00 7 SLPM"),
+                ("A MXRS 1", "A 2"),
+            ],
+        )

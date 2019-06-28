@@ -1,7 +1,7 @@
 from binascii import hexlify
 import pytest
 
-from . import NESLAB_RTE_7 as module
+from . import water_bath as module
 
 
 class TestCalculateChecksum:

@@ -39,7 +39,7 @@ def _parse_args(args: List[str]) -> Dict:
         "--o2fraction",
         dest="o2_source_gas_fraction",
         required=True,
-        type=int,
+        type=float,
         help="O2 percent connected to MFC2",
     )
 

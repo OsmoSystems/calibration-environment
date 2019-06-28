@@ -1,4 +1,3 @@
-import os
 import time
 from datetime import datetime
 
@@ -7,19 +6,12 @@ import pandas as pd
 from .equilibrate import wait_for_temperature, wait_for_gas_mixer
 from .prepare import get_calibration_configuration
 
-# This works for now since the only windows computer is the only device with
-# real sensors hooked up. Need to reconcile with this vs. the --dry_run cli flag
-if os.name == "nt":
-    from .drivers import gas_mixer, NESLAB_RTE_7
-else:
-    from .drivers.stubs import gas_mixer, NESLAB_RTE_7  # type: ignore
 
-
-def get_all_sensor_data_stub(com_port_args):
+def get_all_sensor_data_stub(gas_mixer, NESLAB_RTE_7, com_port_args):
     return pd.Series({"stub_data": 1})
 
 
-def get_all_sensor_data(com_port_args):
+def get_all_sensor_data(gas_mixer, NESLAB_RTE_7, com_port_args):
     gas_mixer_status = gas_mixer.get_mixer_status(com_port_args["gas_mixer"])
     gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"])
 
@@ -38,6 +30,11 @@ def get_all_sensor_data(com_port_args):
 def run(cli_args):
     # Parse the configuration parameters from cli args
     calibration_configuration = get_calibration_configuration(cli_args)
+
+    if calibration_configuration.dry_run:
+        from .drivers.stubs import gas_mixer, NESLAB_RTE_7
+    else:
+        from .drivers import gas_mixer, NESLAB_RTE_7  # type: ignore
 
     write_headers_to_file = True
 
@@ -73,7 +70,7 @@ def run(cli_args):
 
                 # Read from each sensor and add to the DataFrame
                 sensor_data = sensor_data_getter(
-                    calibration_configuration.com_port_args
+                    calibration_configuration.com_port_args, gas_mixer, NESLAB_RTE_7
                 )
 
                 row = pd.Series(

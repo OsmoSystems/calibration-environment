@@ -153,23 +153,30 @@ def _fraction_to_ppb_str(fraction: float) -> str:
 
 def _parse_flow_fraction(mfc_str: str) -> float:
     """ Fractions from the MFC come in parts per billion
-    However, if there is a communication error or the mixer hasn't been run, """
+    However, if there is a communication error or, more likely, the mixer hasn't been run since restart,
+    the value is all dashes - interpret that as zero silently since it's not really an error.
+    """
     if all(character == "-" for character in mfc_str):
         return 0
     return _ppb_to_fraction(mfc_str)
 
 
 def _assert_expected_units(mixer_status_dict: Dict[str, str]) -> None:
-    flow_unit = int(mixer_status_dict["flowUnits"])
+    """ Make sure that pressure and flow units configured on the mixer corrspond to mmHg and SLPM, respectively
+    to prevent misinterpretation of results.
+    """
     pressure_unit = int(mixer_status_dict["pressureUnits"])
-    actual_flow_and_pressure_units = flow_unit, pressure_unit
-    expected_flow_and_pressure_units = FLOW_UNIT_SLPM, PRESSURE_UNIT_MMHG
-    if actual_flow_and_pressure_units != expected_flow_and_pressure_units:
+    flow_unit = int(mixer_status_dict["flowUnits"])
+
+    actual_pressure_and_flow_units = pressure_unit, flow_unit
+    expected_pressure_and_flow_units = PRESSURE_UNIT_MMHG, FLOW_UNIT_SLPM
+
+    if actual_pressure_and_flow_units != expected_pressure_and_flow_units:
         raise UnexpectedMixerResponse(
-            f"Pressure and flow unit codes {actual_flow_and_pressure_units} "
-            f"are not as expected {expected_flow_and_pressure_units}. "
+            f"Pressure and flow unit codes {actual_pressure_and_flow_units} "
+            f"are not as expected {expected_pressure_and_flow_units}. "
             "Please check that mixer is set to our favorite "
-            "units (mmHg for pressuer and SLPM for flow)"
+            "units (mmHg for pressure and SLPM for flow)"
         )
 
 

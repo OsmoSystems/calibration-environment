@@ -4,7 +4,7 @@ from .prepare import CalibrationConfiguration
 from . import run as module
 
 # Don't sleep when running tests
-module.DATA_COLLECTION_INTERVAL = 0
+module.DATA_COLLECTION_INTERVAL_SECONDS = 0
 
 
 def test_csv_is_created(tmp_path, mocker):
@@ -19,15 +19,17 @@ def test_csv_is_created(tmp_path, mocker):
     )
 
     # There are a minimum of 3 data points collected at each setpoint
-    # one in each state - WAIT_FOR_T_EQ, WAIT_FOR_GM_EQ, WAIT_FOR_SETPOINT_TIMEOUT
+    # one in each state - WAIT_FOR_TEMPERATURE_EQ, WAIT_FOR_GAS_MIXER_EQ, WAIT_FOR_SETPOINT_TIMEOUT
     expected_csv = pd.DataFrame(
         {
             "iteration": 0,
-            "setpoint_temperature": [15, 15, 15, 25, 25, 25],
-            "setpoint_flow_rate": 2.5,
-            "setpoint_target_gas_fraction": 50,
-            "o2_source_gas_fraction": 0.21,
-            "Stub data": 1,
+            "setpoint temperature": [15, 15, 15, 25, 25, 25],
+            "setpoint flow rate": 2.5,
+            "setpoint target gas fraction": 50,
+            "o2 source gas fraction": 0.21,
+            "temperature equilibrated": True,
+            "gas mixer equilibrated": True,
+            "stub data": 1,
         }
     )
 

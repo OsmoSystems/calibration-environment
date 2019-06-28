@@ -147,7 +147,7 @@ class SerialPacket:
         self.validate()
 
     def __repr__(self):
-        bytes_as_hex = " ".join([hex(byte) for byte in self.to_bytes()])
+        bytes_as_hex = f" ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
         return f"bytes: {bytes_as_hex}, attributes: {str(self.__dict__)}"
 
     def __eq__(self, other):

@@ -65,7 +65,7 @@ def _parse_args(args: List[str]) -> Dict:
         "--gas-mixer-port",
         dest="gas_mixer_com_port",
         required=False,
-        default="COM19",
+        default="COM22",
         help="gas mixer COM port address",
     )
 
@@ -73,7 +73,7 @@ def _parse_args(args: List[str]) -> Dict:
         "--water-bath-port",
         dest="water_bath_com_port",
         required=False,
-        default="COM20",
+        default="COM21",
         help="water bath COM port address",
     )
 

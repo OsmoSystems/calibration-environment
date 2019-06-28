@@ -217,6 +217,8 @@ def _parse_mixer_status(mixer_status_str: str) -> pd.Series:
 def _send_sequence_with_expected_responses(
     port: str, command_strs_and_expected_responses: List[Tuple[str, str]]
 ) -> None:
+    """ Send a sequence of serial commands, checking that each response is exactly what is expected
+    """
     for command, expected_response in command_strs_and_expected_responses:
         response = send_serial_command_str_and_get_response(command, port)
         if response != expected_response:
@@ -326,24 +328,25 @@ def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> N
 
 
 def start_constant_flow_mix(
-    port: str, flow_rate_slpm: float, o2_source_gas_fraction: float
+    port: str, target_flow_rate_slpm: float, target_o2_source_gas_fraction: float
 ) -> None:
     """ Commands mixer to start a constant flow rate mix
     This also resets any alarms.
 
     Args:
         port: serial port to connect to.
-        flow_rate_slpm: target flow rate, in SLPM
-        o2_source_gas_fraction: target source gas
+        target_flow_rate_slpm: target flow rate, in SLPM
+        target_o2_source_gas_fraction: fraction of O2 source gas in the desired mix. Note that if the connected O2
+            source gas is not pure oxygen, this is not equivalent to the fraction of oxygen in the final mix
 
     Returns:
-
+        None
     """
-    n2_fraction = 1 - o2_source_gas_fraction
+    n2_fraction = 1 - target_o2_source_gas_fraction
     n2_ppb = _fraction_to_ppb_str(n2_fraction)
-    o2_source_gas_ppb = _fraction_to_ppb_str(o2_source_gas_fraction)
+    o2_source_gas_ppb = _fraction_to_ppb_str(target_o2_source_gas_fraction)
     min_mfc_flow_rate = 2.5  # flow rate of our smallest MFC
-    _assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
+    _assert_valid_mix(target_flow_rate_slpm, target_o2_source_gas_fraction)
 
     commands_and_expected_responses = [
         (f"{DEVICE_ID} MXRM 3", "A 3"),  # Set mixer run mode to constant flow
@@ -356,8 +359,8 @@ def start_constant_flow_mix(
             f"{DEVICE_ID} {n2_ppb} {o2_source_gas_ppb}",
         ),
         (  # Set desired flow rate
-            f"{DEVICE_ID} MXRFF {flow_rate_slpm}",
-            f"{DEVICE_ID} {flow_rate_slpm:.2f} {FLOW_UNIT_SLPM} SLPM",
+            f"{DEVICE_ID} MXRFF {target_flow_rate_slpm}",
+            f"{DEVICE_ID} {target_flow_rate_slpm:.2f} {FLOW_UNIT_SLPM} SLPM",
         ),
         (f"{DEVICE_ID} MXRS 1", f"{DEVICE_ID} 2"),  # mixer run state: Start mixin'
     ]

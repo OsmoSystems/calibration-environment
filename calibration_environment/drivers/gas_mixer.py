@@ -88,7 +88,8 @@ class UnexpectedMixerResponse(Exception):
 def _assert_mixer_state(actual_response: str, expected_code: int) -> None:
 
     # Response will look something like "A 3" where "3" is the code
-    match = re.match(r". (\d)", actual_response)
+    regex = r"{device_id} (\d)".format(device_id=DEVICE_ID)
+    match = re.match(regex, actual_response)
     actual_code = int(
         match.groups()[0]  # type: ignore # mypy issue with groups()
     )

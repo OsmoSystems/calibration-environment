@@ -1,4 +1,5 @@
 from binascii import hexlify
+import numpy as np
 import pytest
 
 from . import water_bath as module
@@ -185,6 +186,7 @@ class TestConstructCommandPacket:
             ("Set Setpoint", 6.25, b"\xCA\x00\x01\xF0\x02\x02\x71\x99"),
             ("Set Setpoint", 30.0, b"\xCA\x00\x01\xF0\x02\x0b\xb8\x49"),
             ("Set Setpoint", 62.5, b"\xCA\x00\x01\xF0\x02\x18\x6a\x8A"),
+            ("Set Setpoint", np.float64(62.5), b"\xCA\x00\x01\xF0\x02\x18\x6a\x8A"),
         ],
     )
     def test_construct_command(self, command_name, data, expected_packet_bytes):

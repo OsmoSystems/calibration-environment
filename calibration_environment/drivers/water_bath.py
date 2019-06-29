@@ -321,7 +321,9 @@ def _construct_command_packet(command_name: str, data: float = None):
 
         data_byte_count = 2  # Data is always sent as two bytes
 
-        data_bytes = round(data / REPORTING_PRECISION).to_bytes(
+        # Convert explicitly to stdlib int in case the source is a numpy type
+        # (numpy floats don't have .to_bytes() and round() doesn't coerce them to ints)
+        data_bytes = int(round(data / REPORTING_PRECISION)).to_bytes(
             data_byte_count, byteorder="big"
         )
 

@@ -26,10 +26,18 @@ def get_all_sensor_data(com_port_args, gas_mixer, water_bath):
 
     gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"]).add_suffix(" gas ID")
 
-    # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-    # water_bath_status = water_bath.get_temperature(com_port_args["water_bath"]).add_prefix("NESLAB RTE 7")
+    water_bath_status = pd.Series(
+        {
+            "internal temperature (C)": water_bath.send_command_and_parse_response(
+                com_port_args["water_bath"], "Read Internal Temperature"
+            ),
+            "external sensor temperature (C)": water_bath.send_command_and_parse_response(
+                com_port_args["water_bath"], "Read External Sensor"
+            ),
+        }
+    ).add_prefix("water bath ")
 
-    return pd.concat([gas_mixer_status, gas_ids])
+    return pd.concat([gas_mixer_status, gas_ids, water_bath_status])
 
 
 def collect_data_to_csv(
@@ -103,17 +111,12 @@ def run(cli_args=None):
 
         if calibration_configuration.dry_run:
             from .drivers.stubs import gas_mixer
-
-            # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-            water_bath = None
+            from .drivers.stubs import water_bath
         else:
             from .drivers import gas_mixer  # type: ignore # already defined warning
-
-            # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-            water_bath = None
+            from .drivers import water_bath  # type: ignore # already defined warning
 
         water_bath_com_port = calibration_configuration.com_port_args["water_bath"]
-
         gas_mixer_com_port = calibration_configuration.com_port_args["gas_mixer"]
 
         sequence_iteration_count = 0
@@ -123,8 +126,11 @@ def run(cli_args=None):
 
             for i, setpoint in calibration_configuration.setpoints.iterrows():
 
-                # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-                # water_bath.set_temperature(water_bath_com_port, setpoint["temperature"])
+                water_bath.send_command_and_parse_response(
+                    water_bath_com_port,
+                    command_name="Set Setpoint",
+                    data=setpoint["temperature"],
+                )
 
                 CALIBRATION_STATE = CalibrationState.WAIT_FOR_TEMPERATURE_EQ
 

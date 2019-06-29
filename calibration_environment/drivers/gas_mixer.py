@@ -103,7 +103,7 @@ def _assert_mixer_state(actual_response: str, expected_code: int) -> None:
 
 
 def send_serial_command_str_and_get_response(
-    command_str: str, port: str, timeout: float = 0.06
+    command_str: str, port: str, timeout: float = 0.1
 ) -> str:
     """ Given a serial command, send it on a serial port and return the response.
     Handles Alicat default serial settings and line endings.

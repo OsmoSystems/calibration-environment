@@ -318,7 +318,7 @@ class TestStartConstantFlowMix:
             [
                 ("A MXRM 3", "A 3"),
                 ("A MXRFF 2.5", "A 2.50 7 SLPM"),
-                ("A MXMF 800000000, 200000000", "A 800000000 200000000"),
+                ("A MXMF 800000000 200000000", "A 800000000 200000000"),
                 ("A MXRFF 5", "A 5.00 7 SLPM"),
                 ("A MXRS 1", "A 2"),
             ],

@@ -381,7 +381,7 @@ def start_constant_flow_mix(
             f"{DEVICE_ID} {min_mfc_flow_rate:.2f} {FLOW_UNIT_SLPM} SLPM",
         ),
         (  # Set target fraction.
-            f"{DEVICE_ID} MXMF {n2_ppb}, {o2_source_gas_ppb}",
+            f"{DEVICE_ID} MXMF {n2_ppb} {o2_source_gas_ppb}",
             f"{DEVICE_ID} {n2_ppb} {o2_source_gas_ppb}",
         ),
         (  # Set desired flow rate

@@ -100,10 +100,18 @@ def _open_setpoint_sequence_file(sequence_csv_filepath):
     return sequences
 
 
+# Copy pasta from run experiment
+def iso_datetime_for_filename(datetime_):
+    """ Returns datetime as a ISO-ish format string that can be used in filenames (which can't inclue ":")
+        datetime(2018, 1, 1, 12, 1, 1) --> '2018-01-01--12-01-01'
+    """
+    return datetime_.strftime("%Y-%m-%d--%H-%M-%S")
+
+
 def _get_output_filename():
     start_date = datetime.now()
 
-    return f"{start_date}_calibration.csv"
+    return f"{iso_datetime_for_filename(start_date)}_calibration.csv"
 
 
 def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfiguration:

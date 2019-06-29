@@ -4,6 +4,11 @@ import pytest
 from . import water_bath as module
 
 
+PREFIX_AND_ADDR_DEFAULTS = dict(
+    prefix=0xCA, device_address_msb=0x00, device_address_lsb=0x01
+)
+
+
 class TestCalculateChecksum:
     @pytest.mark.parametrize(
         "message_bytes, expected_checksum",
@@ -176,8 +181,10 @@ class TestConstructCommandPacket:
             ("Read Cool Proportional Band", None, b"\xCA\x00\x01\x74\x00\x8A"),
             ("Read Cool Integral", None, b"\xCA\x00\x01\x75\x00\x89"),
             ("Read Cool Derivative", None, b"\xCA\x00\x01\x76\x00\x88"),
-            ("Set Setpoint", 30.0, b"\xCA\x00\x01\xF0\x02\x01\x2C\xDF"),
-            ("Set Setpoint", 62.5, b"\xCA\x00\x01\xF0\x02\x02\x71\x99"),
+            ("Set Setpoint", 3.00, b"\xCA\x00\x01\xF0\x02\x01\x2C\xDF"),
+            ("Set Setpoint", 6.25, b"\xCA\x00\x01\xF0\x02\x02\x71\x99"),
+            ("Set Setpoint", 30.0, b"\xCA\x00\x01\xF0\x02\x0b\xb8\x49"),
+            ("Set Setpoint", 62.5, b"\xCA\x00\x01\xF0\x02\x18\x6a\x8A"),
         ],
     )
     def test_construct_command(self, command_name, data, expected_packet_bytes):
@@ -188,16 +195,15 @@ class TestConstructCommandPacket:
 
 class TestConstructSettingsCommandPacket:
     def test_construct_settings_command_packet(self):
-        actual_packet = module._construct_settings_command_packet()
+        settings = module.DEFAULT_INITIALIZATION_SETTINGS
+        actual_packet = module._construct_settings_command_packet(settings)
         expected_packet = module.SerialPacket(
-            prefix=0xCA,
-            device_address_msb=0x00,
-            device_address_lsb=0x01,
             command=0x81,
             data_bytes_count=0x08,
-            data_bytes=b"\x01\x01\x02\x02\x02\x00\x02\x01",
-            checksum=0x6A,
+            data_bytes=b"\x01\x01\x02\x02\x02\x01\x02\x01",
+            **PREFIX_AND_ADDR_DEFAULTS,
         )
+        print(actual_packet._checksum)
         assert actual_packet == expected_packet
 
 
@@ -210,41 +216,57 @@ class TestParseSettingsDataBytes:
 
 
 class TestValidateSettings:
-    def test_validate_settings_does_not_raise_if_valid(self):
-        module._validate_settings(module.OnOffArraySettings(1, 1, 2, 2, 2, 0, 2, 1))
+    def test_validate_initialization_settings_does_not_raise_if_correct(self):
+        module._validate_initialized_settings(module.DEFAULT_INITIALIZATION_SETTINGS)
 
-    def test_validate_settings_raises_on_single_error(self):
+    @pytest.mark.parametrize(
+        "setting, incorrect_value",
+        [
+            ("unit_on_off", module.OFF),
+            ("external_sensor_enable", module.OFF),
+            ("high_precision_enable", module.OFF),
+            ("serial_comm_enable", module.OFF),
+        ],
+    )
+    def test_validate_initialization_settings_raises(self, setting, incorrect_value):
         with pytest.raises(ValueError):
-            module._validate_settings(module.OnOffArraySettings(0, 1, 2, 2, 2, 0, 2, 1))
+            settings_with_one_error = module.DEFAULT_INITIALIZATION_SETTINGS._asdict()
+            settings_with_one_error[setting] = incorrect_value
 
-    def test_validate_settings_raises_on_multiple_errors(self):
+            module._validate_initialized_settings(
+                module.OnOffArraySettings(**settings_with_one_error)
+            )
+
+    def test_validate_initialization_settings_raises_on_multiple_errors(self):
         with pytest.raises(ValueError):
-            module._validate_settings(module.OnOffArraySettings(0, 1, 2, 2, 2, 1, 2, 1))
+            settings_with_multiple_errors = (
+                module.DEFAULT_INITIALIZATION_SETTINGS._asdict()
+            )
+            settings_with_multiple_errors["external_sensor_enable"] = module.OFF
+            settings_with_multiple_errors["serial_comm_enable"] = module.OFF
+
+            module._validate_initialized_settings(
+                module.OnOffArraySettings(**settings_with_multiple_errors)
+            )
 
 
 class TestCheckForErrorResponse:
     def test_check_for_error_response_returns_none_on_normal_response(self):
         serial_packet = module.SerialPacket(
-            prefix=0xCA,
-            device_address_msb=0x00,
-            device_address_lsb=0x01,
             command=0x20,
             data_bytes_count=0x00,
             data_bytes=b"",
-            checksum=0xDE,
+            **PREFIX_AND_ADDR_DEFAULTS,
         )
 
         assert module._check_for_error_response(serial_packet) is None
 
     def test_check_for_error_response_identifies_bad_command_error_type(self):
         serial_packet = module.SerialPacket(
-            prefix=0xCA,
-            device_address_msb=0x00,
-            device_address_lsb=0x01,
             command=0x0F,
             data_bytes_count=0x02,
             data_bytes=b"\x01\x99",
-            checksum=0x53,
+            **PREFIX_AND_ADDR_DEFAULTS,
         )
 
         with pytest.raises(module.ErrorResponse) as e:
@@ -255,13 +277,10 @@ class TestCheckForErrorResponse:
 
     def test_check_for_error_response_identifies_bad_checksum_error_type(self):
         serial_packet = module.SerialPacket(
-            prefix=0xCA,
-            device_address_msb=0x00,
-            device_address_lsb=0x01,
             command=0x0F,
             data_bytes_count=0x02,
             data_bytes=b"\x03\x99",
-            checksum=0x51,
+            **PREFIX_AND_ADDR_DEFAULTS,
         )
 
         with pytest.raises(module.ErrorResponse) as e:
@@ -271,13 +290,10 @@ class TestCheckForErrorResponse:
 
     def test_check_for_error_response_identifies_echoed_command(self):
         serial_packet = module.SerialPacket(
-            prefix=0xCA,
-            device_address_msb=0x00,
-            device_address_lsb=0x01,
             command=0x0F,
             data_bytes_count=0x02,
             data_bytes=b"\x03\x99",
-            checksum=0x51,
+            **PREFIX_AND_ADDR_DEFAULTS,
         )
 
         with pytest.raises(module.ErrorResponse) as e:

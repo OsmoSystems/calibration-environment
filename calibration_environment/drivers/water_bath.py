@@ -4,7 +4,7 @@ import serial
 
 
 """
-A driver for the Thermo Scientific NESLAB RTE 7 Temperature-controlled water bath
+A driver for the Thermo Scientific NESLAB RTE 17 Temperature-controlled water bath
 
 Excerpts from the datasheet:
 (https://drive.google.com/open?id=1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz)
@@ -38,14 +38,14 @@ to decode the correct precision and units needed).
 
 """
 
-
-RS_485_PREFIX = 0xCC
-RS_232_PREFIX = 0xCA
-
-# We're using RS-232, which means the device address is always 0x00 0x01
-DEFAULT_PREFIX = RS_232_PREFIX
+# We're using RS-232, which means the prefix is 0xCA and the device address is
+# always 0x00 0x01
+DEFAULT_PREFIX = 0xCA
 DEFAULT_DEVICE_ADDRESS_MSB = 0x00
 DEFAULT_DEVICE_ADDRESS_LSB = 0x01
+
+# The bath can report data with either 0.1 or 0.01 precision
+REPORTING_PRECISION = 0.01
 
 # Default protocol settings on the NESLAB RTE. They can be reconfigured.
 PROTOCOL_DEFAULTS = {
@@ -69,9 +69,9 @@ COMMAND_NAME_TO_HEX = {
     "Read Cool Integral": 0x75,
     "Read Cool Derivative": 0x76,
     # Set Commands
-    "Set Setpoint": 0xF0,
-    "Set Low Temperature Limit": 0xC0,
-    "Set High Temperature Limit": 0xE0,
+    "Set Setpoint": 0xF0,  # Limited to the range of the bath
+    "Set Low Temperature Limit": 0xC0,  # Limited to the range of the bath
+    "Set High Temperature Limit": 0xE0,  # Limited to the range of the bath
     "Set Heat Proportional Band": 0xF1,  # (P = 0.1-99.9)
     "Set Heat Integral": 0xF2,  # (I = 0-9.99)
     "Set Heat Derivative": 0xF3,  # (D = 0-5.0)
@@ -84,6 +84,9 @@ COMMAND_NAME_TO_HEX = {
     # "Read Status": 0x09,
     # "Set On/Off Array": 0x81,
 }
+
+SET_ON_OFF_ARRAY_COMMAND = 0x81
+ERROR_RESPONSE_COMMAND = 0x0F
 
 
 QUALIFIER_HEX_TO_PRECISION = {
@@ -262,9 +265,6 @@ def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
     return int.from_bytes(data_bytes, byteorder="big") * precision
 
 
-ERROR_RESPONSE_COMMAND = 0x0F
-
-
 def _check_for_error_response(serial_packet: SerialPacket):
     if serial_packet.command == ERROR_RESPONSE_COMMAND:
         error_type = serial_packet.data_bytes[0]
@@ -300,7 +300,7 @@ def _send_command(port: str, command_packet: SerialPacket):
             raise InvalidResponse(
                 f"Unable to parse response from water bath. \n"
                 f"Response bytes: {response_bytes}. \n"
-                f"Error: {str(e)}. \n"
+                f"Error: {e}. \n"
             )
 
         _check_for_error_response(serial_packet)
@@ -315,11 +315,13 @@ def _construct_command_packet(command_name: str, data: float = None):
     else:
         # Set commands' data is divided by the desired decimal precision (0.1 or 0.01)
         # so that it can be sent as an int (the operation is reversed on the other side)
-        precision = 0.1  # Assumes the bath has already been set to use this precision
+        # Assumes the bath has already been set to use the REPORTING_PRECISION
 
         data_byte_count = 2  # Data is always sent as two bytes
 
-        data_bytes = round(data / precision).to_bytes(data_byte_count, byteorder="big")
+        data_bytes = round(data / REPORTING_PRECISION).to_bytes(
+            data_byte_count, byteorder="big"
+        )
 
     command = COMMAND_NAME_TO_HEX[command_name]
 
@@ -383,26 +385,28 @@ OnOffArraySettings = collections.namedtuple(
     ],
 )
 
-DEFAULT_ON_OFF_ARRAY_SETTINGS = OnOffArraySettings(
+
+# Ensure that the precision we tell the water bath to use matches the precision we use
+# to send data
+ENABLE_HIGH_PRECISION = {0.01: ON, 0.1: OFF}[REPORTING_PRECISION]
+
+DEFAULT_INITIALIZATION_SETTINGS = OnOffArraySettings(
     unit_on_off=ON,  # Turn on unit
     external_sensor_enable=ON,  # Use external sensor
     faults_enabled=NO_CHANGE,
     mute=NO_CHANGE,
     auto_restart=NO_CHANGE,
-    high_precision_enable=OFF,  # Use 0.1 C precision
+    high_precision_enable=ENABLE_HIGH_PRECISION,
     full_range_cool_enable=NO_CHANGE,
     serial_comm_enable=ON,  # Control bath using serial communications
 )
 
-SET_ON_OFF_ARRAY_COMMAND = 0x81
 
-
-def _construct_settings_command_packet() -> SerialPacket:
+def _construct_settings_command_packet(settings: OnOffArraySettings) -> SerialPacket:
     """ Construct a command packet to set on/off settings to desired, hardcoded values
     """
     return SerialPacket.from_command(
-        command=SET_ON_OFF_ARRAY_COMMAND,
-        data_bytes=bytes(DEFAULT_ON_OFF_ARRAY_SETTINGS),
+        command=SET_ON_OFF_ARRAY_COMMAND, data_bytes=bytes(settings)
     )
 
 
@@ -412,16 +416,35 @@ def _parse_settings_data_bytes(settings_data_bytes: bytes) -> OnOffArraySettings
     return OnOffArraySettings(*settings_data_bytes)
 
 
-def _validate_settings(settings: OnOffArraySettings):
+def _validate_initialized_settings(settings: OnOffArraySettings):
     checks = {
         "Water bath isn't turned on": settings.unit_on_off == ON,
         "External sensor isn't enabled": settings.external_sensor_enable == ON,
-        "Precision isn't 0.1 C": settings.high_precision_enable == OFF,
+        f"Precision isn't {REPORTING_PRECISION}": (
+            settings.high_precision_enable == ENABLE_HIGH_PRECISION
+        ),
         "Serial comms aren't enabled": settings.serial_comm_enable == ON,
     }
+
     errors = [error_message for error_message, check in checks.items() if not check]
     if errors:
         raise ValueError(errors)
+
+
+def send_settings_command_and_parse_response(port: str, settings: OnOffArraySettings):
+    """ Send a settings command to the water bath and parse the response data
+
+        Args:
+            port: The comm port used by the water bath
+            settings: An OnOffArraySettings tuple containing the desired settings
+
+        Returns:
+            The response from the water bath as an OnOffArraySettings tuple
+        """
+    settings_command_packet = _construct_settings_command_packet(settings)
+    response_packet = _send_command(port, settings_command_packet)
+
+    return _parse_settings_data_bytes(response_packet.data_bytes)
 
 
 def initialize(port: str) -> None:
@@ -431,11 +454,8 @@ def initialize(port: str) -> None:
         Args:
             port: The comm port used by the water bath
     """
-    settings_command_packet = _construct_settings_command_packet()
-    response_packet = _send_command(port, settings_command_packet)
+    response_settings = send_settings_command_and_parse_response(
+        port, DEFAULT_INITIALIZATION_SETTINGS
+    )
 
-    response_settings = _parse_settings_data_bytes(response_packet.data_bytes)
-
-    _validate_settings(response_settings)
-
-    # TODO: return something here?
+    _validate_initialized_settings(response_settings)

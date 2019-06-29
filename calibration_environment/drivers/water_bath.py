@@ -435,7 +435,9 @@ def _validate_initialized_settings(settings: OnOffArraySettings):
         raise ValueError(errors)
 
 
-def send_settings_command_and_parse_response(port: str, settings: OnOffArraySettings):
+def send_settings_command_and_parse_response(
+    port: str, settings: OnOffArraySettings
+) -> OnOffArraySettings:
     """ Send a settings command to the water bath and parse the response data
 
         Args:
@@ -451,7 +453,7 @@ def send_settings_command_and_parse_response(port: str, settings: OnOffArraySett
     return _parse_settings_data_bytes(response_packet.data_bytes)
 
 
-def initialize(port: str) -> None:
+def initialize(port: str) -> OnOffArraySettings:
     """ Ensure that the water bath is turned on and that its settings are initialized
         as we expect by sending a set settings command.
 
@@ -463,3 +465,5 @@ def initialize(port: str) -> None:
     )
 
     _validate_initialized_settings(response_settings)
+
+    return response_settings

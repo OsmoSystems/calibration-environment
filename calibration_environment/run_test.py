@@ -3,9 +3,6 @@ import pandas as pd
 from .prepare import CalibrationConfiguration
 from . import run as module
 
-# Don't sleep when running tests
-module.DATA_COLLECTION_INTERVAL_SECONDS = 0
-
 
 def test_csv_is_created(tmp_path, mocker):
     output_filepath = tmp_path / "test.csv"
@@ -49,7 +46,8 @@ def test_csv_is_created(tmp_path, mocker):
         loop=False,
         dry_run=True,
         output_csv=output_filepath,
-        collection_wait_time=0,  # Don't require any waiting during tests
+        collection_interval=0,
+        setpoint_wait_time=0,  # Don't require any waiting during tests
     )
 
     module.run([])

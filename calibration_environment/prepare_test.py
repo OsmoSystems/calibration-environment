@@ -19,6 +19,8 @@ class TestParseArgs(object):
             "COM1",
             "--water-bath-port",
             "COM2",
+            "--collection-interval",
+            "50",
             "--wait-time",
             "300",
         ]
@@ -30,7 +32,8 @@ class TestParseArgs(object):
             "dry_run": True,
             "gas_mixer_com_port": "COM1",
             "water_bath_com_port": "COM2",
-            "collection_wait_time": 300,
+            "collection_interval": 50,
+            "setpoint_wait_time": 300,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -73,7 +76,8 @@ class TestGetCalibrationConfiguration(object):
             loop=True,
             dry_run=False,
             output_csv=sentinel.filepath,
-            collection_wait_time=300,
+            collection_interval=60,
+            setpoint_wait_time=300,
         )
 
         actual_configuration = module.get_calibration_configuration(args_in)

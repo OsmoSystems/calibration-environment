@@ -15,14 +15,11 @@ class CalibrationState(enum.Enum):
     WAIT_FOR_SETPOINT_TIMEOUT = 2
 
 
-DATA_COLLECTION_INTERVAL_SECONDS = 60
-
-
-def get_all_sensor_data_stub(gas_mixer, water_bath, com_port_args):
+def get_all_sensor_data_stub(com_port_args, gas_mixer, water_bath):
     return pd.Series({"data": 1}).add_prefix("stub ")
 
 
-def get_all_sensor_data(gas_mixer, water_bath, com_port_args):
+def get_all_sensor_data(com_port_args, gas_mixer, water_bath):
     gas_mixer_status = gas_mixer.get_mixer_status(
         com_port_args["gas_mixer"]
     ).add_prefix("gas mixer ")
@@ -166,7 +163,7 @@ def run(cli_args=None):
                         )
                         if (
                             setpoint_duration.total_seconds()
-                            > calibration_configuration.collection_wait_time
+                            > calibration_configuration.setpoint_wait_time
                         ):
                             break
                     else:
@@ -175,7 +172,7 @@ def run(cli_args=None):
                         )
 
                     # Wait before collecting next datapoint
-                    time.sleep(DATA_COLLECTION_INTERVAL_SECONDS)
+                    time.sleep(calibration_configuration.collection_interval)
                     collect_data_to_csv(
                         gas_mixer,
                         water_bath,

@@ -16,7 +16,8 @@ CalibrationConfiguration = namedtuple(
         "loop",
         "dry_run",
         "output_csv",
-        "collection_wait_time",
+        "collection_interval",
+        "setpoint_wait_time",
     ],
 )
 
@@ -63,7 +64,7 @@ def _parse_args(args: List[str]) -> Dict:
         dest="gas_mixer_com_port",
         required=False,
         default="COM22",
-        help="gas mixer COM port address",
+        help="override gas mixer COM port address, defaults to COM22",
     )
 
     arg_parser.add_argument(
@@ -71,15 +72,22 @@ def _parse_args(args: List[str]) -> Dict:
         dest="water_bath_com_port",
         required=False,
         default="COM21",
-        help="water bath COM port address",
+        help="overrider water bath COM port address, defaults to COM21",
+    )
+
+    arg_parser.add_argument(
+        "--collection-interval",
+        default=60,
+        type=int,
+        help="time in seconds to wait between reading sensors",
     )
 
     arg_parser.add_argument(
         "--wait-time",
-        dest="collection_wait_time",
+        dest="setpoint_wait_time",
         required=True,
         type=int,
-        help="time in seconds to wait between reading sensors",
+        help="time in seconds to wait at each setpoint",
     )
 
     calibration_arg_namespace = arg_parser.parse_args(args)
@@ -114,7 +122,8 @@ def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfigurati
         loop=args["loop"],
         dry_run=args["dry_run"],
         output_csv=_get_output_filename(),
-        collection_wait_time=args["collection_wait_time"],
+        collection_interval=args["collection_interval"],
+        setpoint_wait_time=args["setpoint_wait_time"],
     )
 
     return calibration_configuration

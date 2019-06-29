@@ -89,7 +89,7 @@ SET_ON_OFF_ARRAY_COMMAND = 0x81
 ERROR_RESPONSE_COMMAND = 0x0F
 
 
-QUALIFIER_HEX_TO_PRECISION = {
+_QUALIFIER_HEX_TO_PRECISION = {
     0x10: 0.1,
     0x20: 0.01,
     0x11: 0.1,  # Units: degrees C
@@ -107,6 +107,8 @@ class ErrorResponse(ValueError):
 
 class SerialPacket:
     """
+    From the datasheet:
+
     The framing of the communications packet in both directions is:
 
     Prefix      0xCA (RS-232); or 0xCC (RS-485)
@@ -121,7 +123,7 @@ class SerialPacket:
     d-byte n    nth data byte
     Checksum    Bitwise inversion of the 1 byte sum of bytes beginning with the most
                 significant address byte and ending with the byte preceding the checksum.
-                (To perform a bitwise inversion, XOR the one byte sum with 0xFF hex.
+                To perform a bitwise inversion, XOR the one byte sum with 0xFF hex.
     """
 
     def __init__(
@@ -243,7 +245,7 @@ def _calculate_checksum(message_bytes: bytes) -> int:
 
 
 def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
-    """ Parse data bytes into an float value with appropriate precision.
+    """ Parse data bytes into a float value with appropriate precision.
 
         From the datasheet:
             When the bath sends data, a qualifier byte is sent first, followed by a two
@@ -251,7 +253,7 @@ def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
             the precision and units of measure for the requested data as detailed in
             Table 2.
 
-        Table 2 is recorded in QUALIFIER_HEX_TO_PRECISION.
+        Table 2 is recorded in _QUALIFIER_HEX_TO_PRECISION.
 
         e.g. a temperature value of 62.5°C would be sent as b"\x11\x02\x71"
             The qualifier byte of 11 indicates a precision of 1 decimal point and units
@@ -260,7 +262,7 @@ def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
     qualifier = qualified_data_bytes[0]
     data_bytes = qualified_data_bytes[1:]
 
-    precision = QUALIFIER_HEX_TO_PRECISION[qualifier]
+    precision = _QUALIFIER_HEX_TO_PRECISION[qualifier]
 
     return int.from_bytes(data_bytes, byteorder="big") * precision
 
@@ -281,7 +283,7 @@ def _check_for_error_response(serial_packet: SerialPacket):
         )
 
 
-def _send_command(port: str, command_packet: SerialPacket):
+def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     """ Send command packet bytes to the bath and collect response
     """
     with serial.Serial(port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
@@ -328,7 +330,9 @@ def _construct_command_packet(command_name: str, data: float = None):
     return SerialPacket.from_command(command, data_bytes)
 
 
-def send_command_and_parse_response(port: str, command_name: str, data: float = None):
+def send_command_and_parse_response(
+    port: str, command_name: str, data: float = None
+) -> float:
     """ Send a generic command to the water bath and parse the response data
 
         Args:

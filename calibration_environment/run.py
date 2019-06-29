@@ -27,7 +27,7 @@ def get_all_sensor_data(gas_mixer, water_bath, com_port_args):
         com_port_args["gas_mixer"]
     ).add_prefix("gas mixer ")
 
-    gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"]).add_prefix("gas mixer ")
+    gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"]).add_suffix(" gas ID")
 
     # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
     # water_bath_status = water_bath.get_temperature(com_port_args["water_bath"]).add_prefix("NESLAB RTE 7")
@@ -40,6 +40,7 @@ def collect_data_to_csv(
     water_bath,
     setpoint,
     calibration_configuration,
+    equilibration_state,
     sequence_iteration_count=0,
     write_headers_to_file=True,
 ):
@@ -75,6 +76,7 @@ def collect_data_to_csv(
             "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
             "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
             "timestamp": datetime.now(),
+            "equilibration state": equilibration_state.name,
             "temperature equilibrated": check_temperature_equilibrated(
                 water_bath, calibration_configuration.com_port_args["water_bath"]
             ),
@@ -179,6 +181,7 @@ def run(cli_args=None):
                         water_bath,
                         setpoint,
                         calibration_configuration,
+                        CALIBRATION_STATE,
                         sequence_iteration_count=sequence_iteration_count,
                         write_headers_to_file=write_headers_to_file,
                     )

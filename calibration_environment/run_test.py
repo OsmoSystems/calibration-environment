@@ -19,7 +19,7 @@ def test_csv_is_created(tmp_path, mocker):
     )
 
     # There are a minimum of 2 data points collected at each setpoint
-    # one in each state - WAIT_FOR_TEMPERATURE_EQ, WAIT_FOR_GAS_MIXER_EQ, WAIT_FOR_SETPOINT_TIMEOUT
+    # one in each of WAIT_FOR_GAS_MIXER_EQ, WAIT_FOR_SETPOINT_TIMEOUT
     expected_csv = pd.DataFrame(
         {
             "iteration": 0,
@@ -27,6 +27,12 @@ def test_csv_is_created(tmp_path, mocker):
             "setpoint flow rate": 2.5,
             "setpoint target gas fraction": 50,
             "o2 source gas fraction": 0.21,
+            "equilibration state": [
+                "WAIT_FOR_GAS_MIXER_EQ",
+                "WAIT_FOR_SETPOINT_TIMEOUT",
+                "WAIT_FOR_GAS_MIXER_EQ",
+                "WAIT_FOR_SETPOINT_TIMEOUT",
+            ],
             "temperature equilibrated": True,
             "gas mixer equilibrated": True,
             "stub data": 1,

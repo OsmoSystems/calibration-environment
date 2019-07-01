@@ -119,6 +119,8 @@ def run(cli_args=None):
         water_bath_com_port = calibration_configuration.com_port_args["water_bath"]
         gas_mixer_com_port = calibration_configuration.com_port_args["gas_mixer"]
 
+        water_bath.initialize(water_bath_com_port)
+
         sequence_iteration_count = 0
         write_headers_to_file = True
 

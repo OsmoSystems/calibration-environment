@@ -377,26 +377,6 @@ def send_command_and_parse_response(
     return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
 
 
-"""
-The "Set On/Off Array" command has a unique data structure in which each data byte
-represents a single setting that can be toggled (including turning on/off the
-bath).
-
-Command and response format: CA 00 01 81 08 (d1)...(d8)(cs)
-Data bytes meaning:
-    (di: 0 = off, 1 = on, 2 = no change)
-    d1 = unit on/off
-    d2 = sensor enable
-    d3 = faults enabled
-    d4 = mute
-    d5 = auto restart
-    d6 = 0.01°C enable
-    d7 = full range cool enable
-    d8 = serial comm enable
-
-e.g. to just turn on and change nothing else:
-    CA 00 01 81 08 01 02 02 02 02 02 02 02 66
-"""
 OFF = 0
 ON = 1
 NO_CHANGE = 2  # Don't change the current bath setting
@@ -464,7 +444,27 @@ def _validate_initialized_settings(settings: OnOffArraySettings):
 def send_settings_command_and_parse_response(
     port: str, settings: OnOffArraySettings
 ) -> OnOffArraySettings:
-    """ Send a settings command to the water bath and parse the response data
+    """ Send a settings command to the water bath and parse the response data.
+
+        The "Set On/Off Array" command has a unique data structure in which each data byte
+        represents a single setting that can be toggled (including turning on/off the bath).
+
+        Data bytes meaning:
+            (di: 0 = off, 1 = on, 2 = no change)
+            d1 = unit on/off
+            d2 = sensor enable
+            d3 = faults enabled
+            d4 = mute
+            d5 = auto restart
+            d6 = 0.01°C enable
+            d7 = full range cool enable
+            d8 = serial comm enable
+
+        We use an OnOffArraySettings namedtuple to capture each of these settings
+
+        e.g. to just turn on and change nothing else:
+            bytes: CA 00 01 81 08 01 02 02 02 02 02 02 02 66
+            OnOffArraySettings(1, 2, 2, 2, 2, 2, 2, 2)
 
         Args:
             port: The comm port used by the water bath

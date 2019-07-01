@@ -320,17 +320,6 @@ class TestCheckForErrorResponse:
 
 
 @pytest.fixture
-def mock_read(mocker):
-    # mock_read = Mock()
-    # mock_serial_port = MagicMock(read=mock_read)
-    mock_serial_port = MagicMock()
-    mock_serial = Mock("Serial", mock_serial_port)
-    mocker.patch.object(module, "serial", mock_serial)
-
-    return mock_read
-
-
-@pytest.fixture
 def mock_serial_and_response(mocker):
     mock_read = Mock()
     mock_serial_port = Mock(read=mock_read)

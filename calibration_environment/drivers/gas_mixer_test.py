@@ -13,6 +13,19 @@ def mock_send_serial_command_and_get_response(mocker):
     return mocker.patch.object(module, "send_serial_command_str_and_get_response")
 
 
+class TestMixControllerStateCode:
+    EXPECTED_EMO_STRING = (
+        'MixControllerState #0: "Emergency Motion Off (EMO) is active."'
+    )
+    EMO_CODE = module._MixControllerStateCode(0)
+
+    def test_str_representation(self):
+        assert str(self.EMO_CODE) == self.EXPECTED_EMO_STRING
+
+    def test_format_string_representation(self):
+        assert f"{self.EMO_CODE}" == self.EXPECTED_EMO_STRING
+
+
 @pytest.mark.parametrize(
     "alarm_str, expected",
     [("2199552", True), ("0", False), ("4096", False), (str(0x008000), True)],
@@ -233,7 +246,7 @@ class TestStopFlow:
         self, mock_send_serial_command_and_get_response
     ):
         mock_send_serial_command_and_get_response.return_value = (
-            f"A {module.MIX_STATE_CODE_STOPPED_OK}"
+            f"A {module._MixControllerStateCode.stopped_ok.value}"
         )
 
         module.stop_flow(mock.sentinel.port)
@@ -245,7 +258,7 @@ class TestStopFlow:
     def test_asserts_mixer_state(self, mock_send_serial_command_and_get_response):
         # Mixer is still mixing after we asked it to stop! This could be any other code
         mock_send_serial_command_and_get_response.return_value = (
-            f"A {module.MIX_STATE_CODE_MIXING}"
+            f"A {module._MixControllerStateCode.mixing.value}"
         )
 
         with pytest.raises(module.UnexpectedMixerResponse, match="Device is mixing."):
@@ -254,13 +267,13 @@ class TestStopFlow:
 
 class TestAssertMixerState:
     def test_mixer_state_matches_doesnt_error(self):
-        module._assert_mixer_state("A 3", 3)
+        module._assert_mixer_state("A 3", module._MixControllerStateCode(3))
 
     def test_mixer_state_mismatch_provides_helpful_error(self):
-        expected_code = 2  # should be mixing
-        actual_code = 5  # There's an alarm
+        expected_code = module._MixControllerStateCode(3)  # should be mixing
+        actual_code_number = 5  # There's an alarm
         with pytest.raises(module.UnexpectedMixerResponse, match="alarm"):
-            module._assert_mixer_state(f"A {actual_code}", expected_code)
+            module._assert_mixer_state(f"A {actual_code_number}", expected_code)
 
 
 class TestAssertValidMix:

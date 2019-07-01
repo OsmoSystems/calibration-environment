@@ -1,6 +1,7 @@
 import collections
 
 import serial
+from serial import Serial
 
 
 """
@@ -98,10 +99,17 @@ _QUALIFIER_HEX_TO_PRECISION = {
 
 
 class InvalidResponse(ValueError):
+    # Error class used when we can't interpret the response from the bath
     pass
 
 
 class ErrorResponse(ValueError):
+    # Error class used when we get an Error response from the bath
+    pass
+
+
+class PrecisionMismatch(ValueError):
+    # Error class used when the bath's precision doesn't match our REPORTING_PRECISION
     pass
 
 
@@ -152,7 +160,7 @@ class SerialPacket:
         self.validate()
 
     def __str__(self):
-        bytes_as_hex = f" ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
+        bytes_as_hex = " ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
         return f"bytes: {bytes_as_hex}, attributes: {str(self.__dict__)}"
 
     def __eq__(self, other):
@@ -220,7 +228,7 @@ class SerialPacket:
 
         if errors:
             raise ValueError(
-                f"Serial packet invalid.\n Errors: {errors}.\n Packet: {self}"
+                f"\nSerial packet invalid. \nErrors: {errors}. \nPacket: {self}"
             )
 
 
@@ -244,7 +252,21 @@ def _calculate_checksum(message_bytes: bytes) -> int:
     return bitwise_inversion
 
 
-def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
+def _validate_precision_matches(precision, expected_precision):
+    """ Validate that the precision sent back by the bath is the same precision we're
+        using to send data.
+    """
+    if precision != expected_precision:
+        raise PrecisionMismatch(
+            f"\nThe precision reported by the bath ({precision}) doesn't match "
+            f"the precision we're using to send data ({expected_precision})."
+            f"\nRun initialize() to set the bath to use our desired precision."
+        )
+
+
+def _parse_data_bytes_as_float(
+    qualified_data_bytes: bytes, expected_precision: float
+) -> float:
     """ Parse data bytes into a float value with appropriate precision.
 
         From the datasheet:
@@ -264,6 +286,8 @@ def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
 
     precision = _QUALIFIER_HEX_TO_PRECISION[qualifier]
 
+    _validate_precision_matches(precision, expected_precision)
+
     return int.from_bytes(data_bytes, byteorder="big") * precision
 
 
@@ -277,16 +301,17 @@ def _check_for_error_response(serial_packet: SerialPacket):
         error = error_types.get(error_type, "Unknown")
 
         raise ErrorResponse(
-            f"Bath responded with error response."
-            f"Error: {error}. "
-            f"Echo of command byte as received: 0x{echoed_command:02X}."
+            f"\nBath responded with error response. "
+            f"\nSerial packet: {serial_packet}. "
+            f"\nError: {error}. "
+            f"\nEcho of command byte as received: 0x{echoed_command:02X}."
         )
 
 
 def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     """ Send command packet bytes to the bath and collect response
     """
-    with serial.Serial(port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
+    with Serial(port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
         serial_port.write(command_packet.to_bytes())
 
         # Use read() instead of readline() as the bath can sometime send bytes that get
@@ -296,18 +321,19 @@ def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
         more_than_enough_bytes = 20
         response_bytes = serial_port.read(more_than_enough_bytes)
 
-        try:
-            serial_packet = SerialPacket.from_bytes(response_bytes)
-        except Exception as e:
-            raise InvalidResponse(
-                f"Unable to parse response from water bath. \n"
-                f"Response bytes: {response_bytes}. \n"
-                f"Error: {e}. \n"
-            )
+    try:
+        serial_packet = SerialPacket.from_bytes(response_bytes)
+    except Exception as e:
+        raise InvalidResponse(
+            f"\nUnable to parse response from water bath. "
+            f"\nResponse bytes: {response_bytes}. "
+            f"\nError: {e}. "
+            f"\nPossible solution: ensure the bath is in 'serial communication' mode"
+        )
 
-        _check_for_error_response(serial_packet)
+    _check_for_error_response(serial_packet)
 
-        return serial_packet
+    return serial_packet
 
 
 def _construct_command_packet(command_name: str, data: float = None):
@@ -348,7 +374,7 @@ def send_command_and_parse_response(
     command_packet = _construct_command_packet(command_name, data)
     response_packet = _send_command(port, command_packet)
 
-    return _parse_data_bytes_as_float(response_packet.data_bytes)
+    return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
 
 
 """

@@ -1,12 +1,18 @@
 import sys
 import time
 import enum
+import logging
 from datetime import datetime
 
 import pandas as pd
 
 from .equilibrate import check_temperature_equilibrated, check_gas_mixer_equilibrated
 from .prepare import get_calibration_configuration
+
+logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
+logging.basicConfig(
+    level=logging.INFO, format=logging_format, handlers=[logging.StreamHandler()]
+)
 
 
 class CalibrationState(enum.Enum):
@@ -58,6 +64,7 @@ def collect_data_to_csv(
             water_bath: A water_bath driver module or stub
             setpoint: A setpoint DataFrame row
             calibration_configuration: A CalibrationConfiguration object
+            equilibration_state: The current equilibration state of the system
             sequence_iteration_count: The current iteration of looping over the setpoint sequence file. Int.
             write_headers_to_file: Whether or not to write csv headers to output file.
     """
@@ -108,6 +115,8 @@ def run(cli_args=None):
             cli_args = sys.argv[1:]
         # Parse the configuration parameters from cli args
         calibration_configuration = get_calibration_configuration(cli_args)
+
+        logging.info(f"Logging sensor data to {calibration_configuration.output_csv}")
 
         if calibration_configuration.dry_run:
             from .drivers.stubs import gas_mixer

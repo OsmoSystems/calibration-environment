@@ -65,6 +65,7 @@ class TestParseDataBytesAsFloat:
         with pytest.raises(module.PrecisionMismatch):
             module._parse_data_bytes_as_float(data_bytes, expected_precision)
 
+
 class TestSerialPacket:
     @pytest.mark.parametrize(
         "name, packet_bytes, expected_packet",
@@ -318,11 +319,12 @@ class TestCheckForErrorResponse:
 
         assert f"0x{0x99:02X}" in str(e.value)
 
+
 @pytest.fixture
 def mock_serial_and_response(mocker):
     mock_read = Mock()
     mock_serial_port = Mock(read=mock_read)
-    mock_serial = mocker.patch.object(module, "Serial")
+    mock_serial = mocker.patch.object(module.serial, "Serial")
 
     # Mock context manager using __enter__
     mock_serial.return_value.__enter__.return_value = mock_serial_port

@@ -1,6 +1,6 @@
 import collections
 
-from serial import Serial
+import serial
 
 
 """
@@ -310,7 +310,7 @@ def _check_for_error_response(serial_packet: SerialPacket):
 def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     """ Send command packet bytes to the bath and collect response
     """
-    with Serial(port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
+    with serial.Serial(port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
         serial_port.write(command_packet.to_bytes())
 
         # Use read() instead of readline() as the bath can sometime send bytes that get
@@ -374,6 +374,7 @@ def send_command_and_parse_response(
     response_packet = _send_command(port, command_packet)
 
     return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
+
 
 OFF = 0
 ON = 1

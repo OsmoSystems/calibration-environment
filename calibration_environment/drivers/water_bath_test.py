@@ -1,5 +1,5 @@
 from binascii import hexlify
-from unittest.mock import Mock, MagicMock, sentinel
+from unittest.mock import Mock, sentinel
 
 import pytest
 

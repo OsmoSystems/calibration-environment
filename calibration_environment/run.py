@@ -58,8 +58,6 @@ def run(cli_args=None):
         data_collection_thread = threading.Thread(
             target=collect_data_poller,
             kwargs={
-                "gas_mixer": gas_mixer,
-                "water_bath": water_bath,
                 "calibration_configuration": calibration_configuration,
                 "setpoint": calibration_configuration.setpoints.loc[0],
                 "setpoint_queue": setpoint_queue,

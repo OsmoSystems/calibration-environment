@@ -5,12 +5,15 @@ import pandas as pd
 
 from .equilibrate import check_temperature_equilibrated, check_gas_mixer_equilibrated
 
+from .drivers import gas_mixer
+from .drivers import water_bath
 
-def get_all_sensor_data_stub(com_port_args, gas_mixer, water_bath, retry_count=0):
+
+def get_all_sensor_data_stub(com_port_args, retry_count=0):
     return pd.Series({"data": 1}).add_prefix("stub ")
 
 
-def get_all_sensor_data(com_port_args, gas_mixer, water_bath, retry_count=0):
+def get_all_sensor_data(com_port_args, retry_count=0):
     try:
         gas_mixer_status = gas_mixer.get_mixer_status(
             com_port_args["gas_mixer"]
@@ -36,14 +39,10 @@ def get_all_sensor_data(com_port_args, gas_mixer, water_bath, retry_count=0):
     except Exception:
         retry_count += 1
         if retry_count < 5:
-            return get_all_sensor_data(
-                com_port_args, gas_mixer, water_bath, retry_count
-            )
+            return get_all_sensor_data(com_port_args, retry_count)
 
 
 def collect_data_to_csv(
-    gas_mixer,
-    water_bath,
     setpoint,
     calibration_configuration,
     equilibration_state,
@@ -71,9 +70,7 @@ def collect_data_to_csv(
     )
 
     # Read from each sensor and add to the DataFrame
-    sensor_data = sensor_data_getter(
-        calibration_configuration.com_port_args, gas_mixer, water_bath
-    )
+    sensor_data = sensor_data_getter(calibration_configuration.com_port_args)
 
     row = pd.Series(
         {
@@ -104,8 +101,6 @@ def collect_data_to_csv(
 
 
 def collect_data_poller(
-    gas_mixer,
-    water_bath,
     calibration_configuration,
     setpoint,
     setpoint_queue,
@@ -128,8 +123,6 @@ def collect_data_poller(
             sequence_iteration_count = sequence_iteration_count_queue.get()
 
         collect_data_to_csv(
-            gas_mixer,
-            water_bath,
             setpoint,
             calibration_configuration,
             equilibration_state,

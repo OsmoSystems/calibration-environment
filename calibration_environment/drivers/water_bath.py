@@ -462,7 +462,7 @@ def send_settings_command_and_parse_response(
 
         We use an OnOffArraySettings namedtuple to capture each of these settings
 
-        e.g. to just turn on and change nothing else:
+        e.g. to just turn on the bath and change nothing else:
             bytes: CA 00 01 81 08 01 02 02 02 02 02 02 02 66
             OnOffArraySettings(1, 2, 2, 2, 2, 2, 2, 2)
 

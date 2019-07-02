@@ -29,7 +29,7 @@ Example usage:
 ```
 import water_bath
 
-water_bath.initialize()
+water_bath.initialize(port="COM21")
 water_bath.send_command_and_parse_response(
     port="COM21",
     command_name="Read Internal Temperature"

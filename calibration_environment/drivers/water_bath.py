@@ -1,6 +1,5 @@
 import collections
 
-import serial
 from serial import Serial
 
 
@@ -375,7 +374,6 @@ def send_command_and_parse_response(
     response_packet = _send_command(port, command_packet)
 
     return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
-
 
 OFF = 0
 ON = 1

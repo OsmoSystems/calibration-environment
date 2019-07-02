@@ -95,26 +95,27 @@ def run(cli_args=None):
 
             for i, setpoint in calibration_configuration.setpoints.iterrows():
 
-                setpoint_queue.put(setpoint)
+                # TODO: Equilibration Procedure Software Implementation
+                # https://app.asana.com/0/1123279738062524/1128578386488633
 
+                setpoint_queue.put(setpoint)
+                equilibration_state_queue.put(CalibrationState.WAIT_FOR_TEMPERATURE_EQ)
                 # Set water bath temperature set point
                 water_bath.send_command_and_parse_response(
                     water_bath_com_port,
                     command_name="Set Setpoint",
                     data=setpoint["temperature"],
                 )
-                equilibration_state_queue.put(CalibrationState.WAIT_FOR_TEMPERATURE_EQ)
                 wait_for_temperature_equilibration(water_bath, water_bath_com_port)
 
                 # Set the gas mixer ratio
-                # TODO: Use multimodal flow rate gas equilibration
+                equilibration_state_queue.put(CalibrationState.WAIT_FOR_GAS_MIXER_EQ)
                 gas_mixer.start_constant_flow_mix(
                     gas_mixer_com_port,
                     setpoint["flow_rate_slpm"],
                     setpoint["o2_target_gas_fraction"],
                     calibration_configuration.o2_source_gas_fraction,
                 )
-                equilibration_state_queue.put(CalibrationState.WAIT_FOR_GAS_MIXER_EQ)
                 wait_for_gas_mixer_equilibration(gas_mixer, gas_mixer_com_port)
 
                 equilibration_state_queue.put(

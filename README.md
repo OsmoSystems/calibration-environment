@@ -26,7 +26,7 @@ There are three public entry points for interfacing with the water bath:
 Check docstrings for more details on usage of each function.
 
 Example usage:
-```
+```python
 import water_bath
 
 water_bath.initialize(port="COM21")
@@ -49,7 +49,7 @@ water_bath.send_command_and_parse_response(
 ```
 
 Advanced usage (barebones functionality for adjusting settings):
-```
+```python
 import water_bath
 
 TURN_OFF_UNIT = water_bath.OnOffArraySettings(0,2,2,2,2,2,2,2)

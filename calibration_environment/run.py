@@ -66,15 +66,11 @@ def run(cli_args=None):
         sequence_iteration_count = 0
 
         # Initialize queues to send state updates to data collection thread
-        setpoint_queue: MemoryQueue = MemoryQueue(
-            calibration_configuration.setpoints.loc[0]
-        )
-        equilibration_state_queue: MemoryQueue = MemoryQueue(
+        setpoint_queue = MemoryQueue(calibration_configuration.setpoints.loc[0])
+        equilibration_state_queue = MemoryQueue(
             CalibrationState.WAIT_FOR_TEMPERATURE_EQ
         )
-        sequence_iteration_count_queue: MemoryQueue = MemoryQueue(
-            sequence_iteration_count
-        )
+        sequence_iteration_count_queue = MemoryQueue(sequence_iteration_count)
         end_data_collection_signal = threading.Event()
 
         data_collection_thread = threading.Thread(

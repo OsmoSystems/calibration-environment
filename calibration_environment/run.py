@@ -11,7 +11,7 @@ from .equilibrate import (
     wait_for_gas_mixer_equilibration,
 )
 from .prepare import get_calibration_configuration
-from .sensors import collect_data_poller
+from .sensors import poll_data_to_csv
 
 logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
 logging.basicConfig(
@@ -56,7 +56,7 @@ def run(cli_args=None):
         end_data_collection_signal = threading.Event()
 
         data_collection_thread = threading.Thread(
-            target=collect_data_poller,
+            target=poll_data_to_csv,
             kwargs={
                 "calibration_configuration": calibration_configuration,
                 "setpoint": calibration_configuration.setpoints.loc[0],

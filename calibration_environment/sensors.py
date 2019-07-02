@@ -100,7 +100,7 @@ def collect_data_to_csv(
     )
 
 
-def collect_data_poller(
+def poll_data_to_csv(
     calibration_configuration,
     setpoint,
     setpoint_queue,

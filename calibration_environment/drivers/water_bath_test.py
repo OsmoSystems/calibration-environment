@@ -1,4 +1,7 @@
 from binascii import hexlify
+from unittest.mock import Mock, sentinel
+
+import numpy as np
 import pytest
 
 from . import water_bath as module
@@ -29,23 +32,38 @@ class TestCalculateChecksum:
 
 class TestParseDataBytesAsFloat:
     @pytest.mark.parametrize(
-        "data_bytes, expected_value",
+        "data_bytes, expected_precision, expected_value",
         [
             # Examples from the datasheet
-            (b"\x11\x02\x71", 62.5),  # Units: degrees C
-            (b"\x11\x01\x2C", 30.0),  # Units: degrees C
-            (b"\x10\x02\x71", 62.5),
-            (b"\x10\x01\x2C", 30.0),
+            (b"\x11\x02\x71", 0.1, 62.5),  # Units: degrees C
+            (b"\x11\x01\x2C", 0.1, 30.0),  # Units: degrees C
+            (b"\x10\x02\x71", 0.1, 62.5),
+            (b"\x10\x01\x2C", 0.1, 30.0),
             # Other examples
-            (b"\x21\x02\x71", 6.25),  # Units: degrees C
-            (b"\x21\x01\x2C", 3.00),  # Units: degrees C
-            (b"\x20\x02\x71", 6.25),
-            (b"\x20\x01\x2C", 3.00),
+            (b"\x21\x02\x71", 0.01, 6.25),  # Units: degrees C
+            (b"\x21\x01\x2C", 0.01, 3.00),  # Units: degrees C
+            (b"\x20\x02\x71", 0.01, 6.25),
+            (b"\x20\x01\x2C", 0.01, 3.00),
         ],
     )
-    def test_parse_data_bytes_as_float(self, data_bytes, expected_value):
-        actual_value = module._parse_data_bytes_as_float(data_bytes)
+    def test_parse_data_bytes_as_float(
+        self, data_bytes, expected_precision, expected_value
+    ):
+        actual_value = module._parse_data_bytes_as_float(data_bytes, expected_precision)
         assert actual_value == expected_value
+
+    @pytest.mark.parametrize(
+        "data_bytes, expected_precision",
+        [
+            (b"\x11\x01\x2C", 0.01),
+            (b"\x10\x01\x2C", 0.01),
+            (b"\x21\x01\x2C", 0.1),
+            (b"\x20\x01\x2C", 0.1),
+        ],
+    )
+    def test_raises_on_precision_mismatch(self, data_bytes, expected_precision):
+        with pytest.raises(module.PrecisionMismatch):
+            module._parse_data_bytes_as_float(data_bytes, expected_precision)
 
 
 class TestSerialPacket:
@@ -185,9 +203,10 @@ class TestConstructCommandPacket:
             ("Set Setpoint", 6.25, b"\xCA\x00\x01\xF0\x02\x02\x71\x99"),
             ("Set Setpoint", 30.0, b"\xCA\x00\x01\xF0\x02\x0b\xb8\x49"),
             ("Set Setpoint", 62.5, b"\xCA\x00\x01\xF0\x02\x18\x6a\x8A"),
+            ("Set Setpoint", np.float64(62.5), b"\xCA\x00\x01\xF0\x02\x18\x6a\x8A"),
         ],
     )
-    def test_construct_command(self, command_name, data, expected_packet_bytes):
+    def test_construct_command_packet(self, command_name, data, expected_packet_bytes):
         packet = module._construct_command_packet(command_name, data=data)
         # hexlify to make error message more readable
         assert hexlify(packet.to_bytes()) == hexlify(expected_packet_bytes)
@@ -272,7 +291,6 @@ class TestCheckForErrorResponse:
         with pytest.raises(module.ErrorResponse) as e:
             module._check_for_error_response(serial_packet)
 
-        print(e.value)
         assert "Bad Command" in str(e.value)
 
     def test_check_for_error_response_identifies_bad_checksum_error_type(self):
@@ -300,3 +318,47 @@ class TestCheckForErrorResponse:
             module._check_for_error_response(serial_packet)
 
         assert f"0x{0x99:02X}" in str(e.value)
+
+
+@pytest.fixture
+def mock_serial_and_response(mocker):
+    mock_read = Mock()
+    mock_serial_port = Mock(read=mock_read)
+    mock_serial = mocker.patch.object(module.serial, "Serial")
+
+    # Mock context manager using __enter__
+    mock_serial.return_value.__enter__.return_value = mock_serial_port
+
+    return mock_read
+
+
+class TestSendCommand:
+    def test_returns_response_serial_packet_from_bytes(self, mock_serial_and_response):
+        mock_command_packet = Mock()
+        mock_serial_and_response.return_value = b"\xCA\x00\x01\x20\x03\x11\x02\x71\x57"
+
+        actual = module._send_command(sentinel.port, mock_command_packet)
+
+        expected_response_packet = module.SerialPacket(
+            command=0x20,
+            data_bytes_count=0x03,
+            data_bytes=b"\x11\x02\x71",
+            **PREFIX_AND_ADDR_DEFAULTS,
+        )
+
+        assert actual == expected_response_packet
+
+    def test_raises_on_invalid_response(self, mock_serial_and_response):
+        mock_command_packet = Mock()
+        mock_serial_and_response.return_value = b""
+
+        with pytest.raises(module.InvalidResponse):
+            module._send_command(sentinel.port, mock_command_packet)
+
+    def test_raises_on_error_response(self, mock_serial_and_response):
+        mock_command_packet = Mock()
+        # The 0x0F in the command byte position indicates an error response
+        mock_serial_and_response.return_value = b"\xCA\x00\x01\x0F\x02\x01\x99\x53"
+
+        with pytest.raises(module.ErrorResponse):
+            module._send_command(sentinel.port, mock_command_packet)

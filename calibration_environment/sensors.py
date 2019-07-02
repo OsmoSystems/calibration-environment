@@ -9,11 +9,11 @@ from .drivers import gas_mixer
 from .drivers import water_bath
 
 
-def get_all_sensor_data_stub(com_port_args, retry_count=0):
+def get_all_sensor_data_stub(com_port_args):
     return pd.Series({"data": 1}).add_prefix("stub ")
 
 
-def get_all_sensor_data(com_port_args, retry_count=0):
+def get_all_sensor_data(com_port_args):
     gas_mixer_status = gas_mixer.get_mixer_status(
         com_port_args["gas_mixer"]
     ).add_prefix("gas mixer ")

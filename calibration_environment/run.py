@@ -131,9 +131,10 @@ def run(cli_args=None):
             sequence_iteration_count += 1
 
     finally:
-        gas_mixer.stop_flow(gas_mixer_com_port)
-        # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-        # water_bath.shutdown(water_bath_com_port)
+        with serial_lock:
+            gas_mixer.stop_flow(gas_mixer_com_port)
+            # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
+            # water_bath.shutdown(water_bath_com_port)
 
         # Send an event to data collection thread and wait for it to exit
         end_data_collection_signal.set()

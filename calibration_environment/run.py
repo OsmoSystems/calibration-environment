@@ -73,15 +73,18 @@ def run(cli_args=None):
         sequence_iteration_count_queue = MemoryQueue(sequence_iteration_count)
         end_data_collection_signal = threading.Event()
 
+        serial_lock = threading.Lock()
+
         data_collection_thread = threading.Thread(
             target=poll_data_to_csv,
-            kwargs={
-                "calibration_configuration": calibration_configuration,
-                "setpoint_queue": setpoint_queue,
-                "sequence_iteration_count_queue": sequence_iteration_count_queue,
-                "equilibration_state_queue": equilibration_state_queue,
-                "end_data_collection_signal": end_data_collection_signal,
-            },
+            args=(
+                serial_lock,
+                calibration_configuration,
+                setpoint_queue,
+                sequence_iteration_count_queue,
+                equilibration_state_queue,
+                end_data_collection_signal,
+            ),
         )
 
         data_collection_thread.start()
@@ -97,21 +100,23 @@ def run(cli_args=None):
                 setpoint_queue.put(setpoint)
                 equilibration_state_queue.put(CalibrationState.WAIT_FOR_TEMPERATURE_EQ)
                 # Set water bath temperature set point
-                water_bath.send_command_and_parse_response(
-                    water_bath_com_port,
-                    command_name="Set Setpoint",
-                    data=setpoint["temperature"],
-                )
+                with serial_lock:
+                    water_bath.send_command_and_parse_response(
+                        water_bath_com_port,
+                        command_name="Set Setpoint",
+                        data=setpoint["temperature"],
+                    )
                 wait_for_temperature_equilibration(water_bath, water_bath_com_port)
 
                 # Set the gas mixer ratio
                 equilibration_state_queue.put(CalibrationState.WAIT_FOR_GAS_MIXER_EQ)
-                gas_mixer.start_constant_flow_mix(
-                    gas_mixer_com_port,
-                    setpoint["flow_rate_slpm"],
-                    setpoint["o2_target_gas_fraction"],
-                    calibration_configuration.o2_source_gas_fraction,
-                )
+                with serial_lock:
+                    gas_mixer.start_constant_flow_mix(
+                        gas_mixer_com_port,
+                        setpoint["flow_rate_slpm"],
+                        setpoint["o2_target_gas_fraction"],
+                        calibration_configuration.o2_source_gas_fraction,
+                    )
                 wait_for_gas_mixer_equilibration(gas_mixer, gas_mixer_com_port)
 
                 equilibration_state_queue.put(

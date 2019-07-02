@@ -14,35 +14,28 @@ def get_all_sensor_data_stub(com_port_args, retry_count=0):
 
 
 def get_all_sensor_data(com_port_args, retry_count=0):
-    try:
-        gas_mixer_status = gas_mixer.get_mixer_status(
-            com_port_args["gas_mixer"]
-        ).add_prefix("gas mixer ")
+    gas_mixer_status = gas_mixer.get_mixer_status(
+        com_port_args["gas_mixer"]
+    ).add_prefix("gas mixer ")
 
-        gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"]).add_suffix(
-            " gas ID"
-        )
+    gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"]).add_suffix(" gas ID")
 
-        water_bath_status = pd.Series(
-            {
-                "internal temperature (C)": water_bath.send_command_and_parse_response(
-                    com_port_args["water_bath"], "Read Internal Temperature"
-                ),
-                "external sensor temperature (C)": water_bath.send_command_and_parse_response(
-                    com_port_args["water_bath"], "Read External Sensor"
-                ),
-            }
-        ).add_prefix("water bath ")
+    water_bath_status = pd.Series(
+        {
+            "internal temperature (C)": water_bath.send_command_and_parse_response(
+                com_port_args["water_bath"], "Read Internal Temperature"
+            ),
+            "external sensor temperature (C)": water_bath.send_command_and_parse_response(
+                com_port_args["water_bath"], "Read External Sensor"
+            ),
+        }
+    ).add_prefix("water bath ")
 
-        return pd.concat([gas_mixer_status, gas_ids, water_bath_status])
-    # TODO: figure out what the expected pyserial exception might be here
-    except Exception:
-        retry_count += 1
-        if retry_count < 5:
-            return get_all_sensor_data(com_port_args, retry_count)
+    return pd.concat([gas_mixer_status, gas_ids, water_bath_status])
 
 
 def collect_data_to_csv(
+    serial_lock,
     setpoint,
     calibration_configuration,
     equilibration_state,
@@ -70,7 +63,8 @@ def collect_data_to_csv(
     )
 
     # Read from each sensor and add to the DataFrame
-    sensor_data = sensor_data_getter(calibration_configuration.com_port_args)
+    with serial_lock:
+        sensor_data = sensor_data_getter(calibration_configuration.com_port_args)
 
     row = pd.Series(
         {
@@ -101,6 +95,7 @@ def collect_data_to_csv(
 
 
 def poll_data_to_csv(
+    serial_lock,
     calibration_configuration,
     setpoint_queue,
     sequence_iteration_count_queue,
@@ -112,6 +107,7 @@ def poll_data_to_csv(
     while not end_data_collection_signal.is_set():
 
         collect_data_to_csv(
+            serial_lock,
             setpoint_queue.get(),
             calibration_configuration,
             equilibration_state_queue.get(),

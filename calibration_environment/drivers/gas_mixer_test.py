@@ -22,9 +22,6 @@ class TestMixControllerStateCode:
     def test_str_representation(self):
         assert str(self.EMO_CODE) == self.EXPECTED_EMO_STRING
 
-    def test_format_string_representation(self):
-        assert f"{self.EMO_CODE}" == self.EXPECTED_EMO_STRING
-
 
 @pytest.mark.parametrize(
     "alarm_str, expected",

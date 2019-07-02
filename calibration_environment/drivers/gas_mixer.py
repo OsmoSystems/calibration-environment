@@ -63,6 +63,14 @@ MixerStatusResponse = namedtuple(
     ],
 )
 
+# Expected unit settings
+_PRESSURE_UNIT_CODE_MMHG = 14
+_FLOW_UNIT_CODE_SLPM = 7
+
+# Maximum flow rates on our MFCs, SLPM
+_N2_MAX_FLOW = 10
+_O2_SOURCE_GAS_MAX_FLOW = 2.5
+
 # In status fields, this bit is used to indicate low feed pressure,
 # which generally means a cylinder is exhausted, not connected or there's a kink in the line
 _LOW_FEED_PRESSURE_ALARM_BIT = 0x008000
@@ -71,6 +79,8 @@ _ONE_BILLION = 1000000000
 
 
 class _MixControllerStateCode(IntEnum):
+    """ Codes returned by the mix controller in response to a mixer status (MXRS) command or query """
+
     emergency_motion_off = 0
     stopped_configuration_error = 1
     mixing = 2
@@ -93,15 +103,32 @@ class _MixControllerStateCode(IntEnum):
     def __str__(self):
         return f'MixControllerState #{self.value}: "{self.description}"'
 
-    def __format__(self, format_spec):
-        # mixin'd subclasses of Enum have to override __format__ in addition to __str__ to change f-string behavior.
-        # bug report:
-        # https://bugs.python.org/issue37479?@ok_message=msg%20347089%20created%0Aissue%2037479%20created&@template=item
-        return str(self)
+
+class _MixControllerRunStateRequestCode(IntEnum):
+    """ Codes used to command the mix controller in a mixer status (MXRS) command """
+
+    clear_alarms_and_start_mixing = 1
+    stop_flow = 2
+    clear_alarms = 3
+    quiet_alarms = 4
+    enter_service_mode = 5
+
+    @property
+    def description(self):
+        return {
+            1: "Clear any existing alarms, exit service mode, and start mixing.",
+            2: "Stop flow. If in service mode, exit service mode and stop flow. Any existing alarms remain active.",
+            3: "Clear any existing alarms. Mixing remains stopped.",
+            4: "Quiet any existing alarm but do not clear any alarms.",
+            5: "Enter service mode. The mix module suspends all communication with the MFCs, "
+            "but any existing alarms remain active.",
+        }[self]
+
+    def __str__(self):
+        return f'MixControllerRunStateRequestCode #{self.value}: "{self.description}"'
 
 
-_PRESSURE_UNIT_CODE_MMHG = 14
-_FLOW_UNIT_CODE_SLPM = 7
+MIXER_MODE_CODE_CONSTANT_FLOW = 3
 
 
 class UnexpectedMixerResponse(Exception):
@@ -305,7 +332,7 @@ def get_gas_ids(port: str) -> pd.Series:
             'O2 source gas': o2 source gas ID
         })
     """
-
+    # mnemonic: "MXFG" = "mixer feed gases"
     command = f"{_DEVICE_ID} MXFG"
     response = send_serial_command_str_and_get_response(command, port)
 
@@ -322,31 +349,29 @@ def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> N
     Raises:
         ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
     """
-    o2_source_gas_max_flow = 2.5
-    n2_max_flow = 10
     o2_source_gas_target = flow_rate_slpm * o2_source_gas_fraction
     n2_target = flow_rate_slpm - o2_source_gas_target
 
     invalid_mix_message = (
-        f"Invalid mix: flow rate {flow_rate_slpm} SLPM, "
+        f"Invalid mix requested: flow rate {flow_rate_slpm} SLPM, "
         f"O2 source gas fraction {o2_source_gas_fraction}. "
     )
 
     o2_source_gas_error = (
         (
             "O2 source gas mixer only goes up to "
-            f"{o2_source_gas_max_flow} but {o2_source_gas_target} is required for desired mix. "
+            f"{_O2_SOURCE_GAS_MAX_FLOW} but {o2_source_gas_target} is required for desired mix. "
         )
-        if o2_source_gas_target > o2_source_gas_max_flow
+        if o2_source_gas_target > _O2_SOURCE_GAS_MAX_FLOW
         else ""
     )
 
     n2_error = (
         (
             f"N2 source gas mixer only goes up to "
-            f"{n2_max_flow} but {n2_target} is required for desired mix. "
+            f"{_N2_MAX_FLOW} but {n2_target} is required for desired mix. "
         )
-        if n2_target > n2_max_flow
+        if n2_target > _N2_MAX_FLOW
         else ""
     )
 
@@ -393,11 +418,16 @@ def start_constant_flow_mix(
     n2_fraction = 1 - target_o2_source_gas_fraction
     n2_ppb = _fraction_to_ppb_str(n2_fraction)
     o2_source_gas_ppb = _fraction_to_ppb_str(target_o2_source_gas_fraction)
-    min_mfc_flow_rate = 2.5  # flow rate of our smallest MFC
+    min_mfc_flow_rate = min(
+        _O2_SOURCE_GAS_MAX_FLOW, _N2_MAX_FLOW
+    )  # flow rate of our smallest MFC
     _assert_valid_mix(target_flow_rate_slpm, target_o2_source_gas_fraction)
 
     commands_and_expected_responses = [
-        (f"{_DEVICE_ID} MXRM 3", "A 3"),  # Set mixer run mode to constant flow
+        (  # Set mixer run mode to constant flow
+            f"{_DEVICE_ID} MXRM {MIXER_MODE_CODE_CONSTANT_FLOW}",
+            f"A {MIXER_MODE_CODE_CONSTANT_FLOW}",
+        ),
         (  # Initially set flow rate to a small number to make sure the fraction goes through.
             f"{_DEVICE_ID} MXRFF {min_mfc_flow_rate}",
             f"{_DEVICE_ID} {min_mfc_flow_rate:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
@@ -410,7 +440,10 @@ def start_constant_flow_mix(
             f"{_DEVICE_ID} MXRFF {target_flow_rate_slpm}",
             f"{_DEVICE_ID} {target_flow_rate_slpm:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
         ),
-        (f"{_DEVICE_ID} MXRS 1", f"{_DEVICE_ID} 2"),  # mixer run state: Start mixin'
+        (
+            f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.clear_alarms_and_start_mixing.value}",
+            f"{_DEVICE_ID} {_MixControllerStateCode.mixing.value}",
+        ),  # mixer run state: Start mixin'
     ]
 
     _send_sequence_with_expected_responses(port, commands_and_expected_responses)
@@ -430,6 +463,6 @@ def stop_flow(port: str) -> None:
             Likely cause is that the mixer was already stopped due to an alarm.
     """
     # mnemonic: "MXRS" = "mixer run state"
-    command = f"{_DEVICE_ID} MXRS 2"
+    command = f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.stop_flow.value}"
     response = send_serial_command_str_and_get_response(command, port)
     _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)

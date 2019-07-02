@@ -440,10 +440,10 @@ def start_constant_flow_mix(
             f"{_DEVICE_ID} MXRFF {target_flow_rate_slpm}",
             f"{_DEVICE_ID} {target_flow_rate_slpm:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
         ),
-        (
+        (  # mixer run state: Start mixin'
             f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.clear_alarms_and_start_mixing.value}",
             f"{_DEVICE_ID} {_MixControllerStateCode.mixing.value}",
-        ),  # mixer run state: Start mixin'
+        ),
     ]
 
     _send_sequence_with_expected_responses(port, commands_and_expected_responses)

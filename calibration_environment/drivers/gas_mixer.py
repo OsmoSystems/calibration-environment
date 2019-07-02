@@ -128,7 +128,7 @@ class _MixControllerRunStateRequestCode(IntEnum):
         return f'MixControllerRunStateRequestCode #{self.value}: "{self.description}"'
 
 
-MIXER_MODE_CODE_CONSTANT_FLOW = 3
+_MIXER_MODE_CODE_CONSTANT_FLOW = 3
 
 
 class UnexpectedMixerResponse(Exception):
@@ -260,7 +260,7 @@ def _parse_mixer_status(mixer_status_str: str) -> pd.Series:
         )
     except ValueError as e:
         raise UnexpectedMixerResponse(
-            f"Could not parse response. Response was:\n {MixerStatusResponse}\n. Error: {str(e)}"
+            f"Could not parse response. Response was:\n {mixer_status_response}\n. Error: {str(e)}"
         )
 
 
@@ -426,8 +426,8 @@ def start_constant_flow_mix(
 
     commands_and_expected_responses = [
         (  # Set mixer run mode to constant flow
-            f"{_DEVICE_ID} MXRM {MIXER_MODE_CODE_CONSTANT_FLOW}",
-            f"A {MIXER_MODE_CODE_CONSTANT_FLOW}",
+            f"{_DEVICE_ID} MXRM {_MIXER_MODE_CODE_CONSTANT_FLOW}",
+            f"A {_MIXER_MODE_CODE_CONSTANT_FLOW}",
         ),
         (  # Initially set flow rate to a small number to make sure the fraction goes through.
             f"{_DEVICE_ID} MXRFF {min_mfc_flow_rate}",

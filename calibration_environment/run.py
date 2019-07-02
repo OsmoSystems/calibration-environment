@@ -37,7 +37,7 @@ class MemoryQueue(queue.Queue):
 
     def get(self):
         if not self.empty():
-            self.last_value = self.get()
+            self.last_value = super().get()
         return self.last_value
 
 

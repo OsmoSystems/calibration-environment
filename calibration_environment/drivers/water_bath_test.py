@@ -289,7 +289,6 @@ class TestCheckForErrorResponse:
         with pytest.raises(module.ErrorResponse) as e:
             module._check_for_error_response(serial_packet)
 
-        print(e.value)
         assert "Bad Command" in str(e.value)
 
     def test_check_for_error_response_identifies_bad_checksum_error_type(self):

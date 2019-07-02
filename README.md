@@ -52,8 +52,8 @@ Advanced usage (barebones functionality for adjusting settings):
 ```
 import water_bath
 
-TURN_OFF_UNIT = water_bath.OnOffSettings(0,2,2,2,2,2,2,2)
-TURN_OFF_SERIAL = water_bath.OnOffSettings(2,2,2,2,2,2,2,0)
+TURN_OFF_UNIT = water_bath.OnOffArraySettings(0,2,2,2,2,2,2,2)
+TURN_OFF_SERIAL = water_bath.OnOffArraySettings(2,2,2,2,2,2,2,0)
 
 water_bath.send_settings_command_and_parse_response(
     port="COM21",

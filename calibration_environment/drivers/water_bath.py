@@ -316,7 +316,7 @@ def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
 
         # Use read() instead of readline() as the bath can sometime send bytes that get
         # interpreted as EOL characters. Set it to read `more_than_enough_bytes` so that
-        # it definitely gets all the bytes in the respose (longest message is 14 bytes)
+        # it definitely gets all the bytes in the response (longest message is 14 bytes)
         # and only stops at the timeout
         more_than_enough_bytes = 20
         response_bytes = serial_port.read(more_than_enough_bytes)

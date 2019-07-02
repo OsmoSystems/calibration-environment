@@ -25,6 +25,22 @@ class CalibrationState(enum.Enum):
     WAIT_FOR_SETPOINT_TIMEOUT = 2
 
 
+class MemoryQueue(queue.Queue):
+    """
+        A basic FIFO queue which will return the last seen value if the queue is currently empty.
+        Takes an initial_value in the constructor.
+    """
+
+    def __init__(self, initial_value=None, *args, **kwargs):
+        queue.Queue.__init__(self, *args, **kwargs)
+        self.last_value = initial_value
+
+    def get(self):
+        if not self.empty():
+            self.last_value = self.get()
+        return self.last_value
+
+
 def run(cli_args=None):
     try:
         if cli_args is None:
@@ -50,20 +66,23 @@ def run(cli_args=None):
         sequence_iteration_count = 0
 
         # Initialize queues to send state updates to data collection thread
-        setpoint_queue: queue.Queue = queue.Queue()
-        equilibration_state_queue: queue.Queue = queue.Queue()
-        sequence_iteration_count_queue: queue.Queue = queue.Queue()
+        setpoint_queue: MemoryQueue = MemoryQueue(
+            calibration_configuration.setpoints.loc[0]
+        )
+        equilibration_state_queue: MemoryQueue = MemoryQueue(
+            CalibrationState.WAIT_FOR_TEMPERATURE_EQ
+        )
+        sequence_iteration_count_queue: MemoryQueue = MemoryQueue(
+            sequence_iteration_count
+        )
         end_data_collection_signal = threading.Event()
 
         data_collection_thread = threading.Thread(
             target=poll_data_to_csv,
             kwargs={
                 "calibration_configuration": calibration_configuration,
-                "setpoint": calibration_configuration.setpoints.loc[0],
                 "setpoint_queue": setpoint_queue,
-                "sequence_iteration_count": sequence_iteration_count,
                 "sequence_iteration_count_queue": sequence_iteration_count_queue,
-                "equilibration_state": CalibrationState.WAIT_FOR_TEMPERATURE_EQ,
                 "equilibration_state_queue": equilibration_state_queue,
                 "end_data_collection_signal": end_data_collection_signal,
             },

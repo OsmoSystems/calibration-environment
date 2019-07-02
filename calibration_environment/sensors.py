@@ -102,11 +102,8 @@ def collect_data_to_csv(
 
 def poll_data_to_csv(
     calibration_configuration,
-    setpoint,
     setpoint_queue,
-    sequence_iteration_count,
     sequence_iteration_count_queue,
-    equilibration_state,
     equilibration_state_queue,
     end_data_collection_signal,
 ):
@@ -114,19 +111,11 @@ def poll_data_to_csv(
 
     while not end_data_collection_signal.is_set():
 
-        # Check for updated state values sent from main thread
-        if not setpoint_queue.empty():
-            setpoint = setpoint_queue.get()
-        if not equilibration_state_queue.empty():
-            equilibration_state = equilibration_state_queue.get()
-        if not sequence_iteration_count_queue.empty():
-            sequence_iteration_count = sequence_iteration_count_queue.get()
-
         collect_data_to_csv(
-            setpoint,
+            setpoint_queue.get(),
             calibration_configuration,
-            equilibration_state,
-            sequence_iteration_count,
+            equilibration_state_queue.get(),
+            sequence_iteration_count_queue.get(),
             write_headers_to_file=write_headers_to_file,
         )
         write_headers_to_file = False

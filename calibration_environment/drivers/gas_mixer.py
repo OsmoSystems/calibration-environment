@@ -290,10 +290,11 @@ def get_mixer_status(port: str) -> pd.Series:
             low feed pressure alarm: whether any,
             low feed pressure alarm - N2: feed pressure alarm specific to N2 input,
             low feed pressure alarm - O2 source gas: feed pressure alarm specific to O2 source gas input,
-            N2 fraction in mix: actual fraction of the N2 source gas, in the mix.
+            N2 fraction in mix: Fraction of the mix that comes from the N2 source gas canister.
                 NOTE that this is not necessarily the fractional volume of nitrogen in the result, since
                 the O2 source gas may contain nitrogen as well.
-            O2 source gas fraction in mix: 1,
+            O2 source gas fraction in mix: Fraction of the mix that comes from
+                the O2 source gas (the canister containing oxygen)
                 NOTE that this is not necessarily the fractional volume of O2 in the result, since
                 the O2 source gas may not be pure oxygen if we are using a premixed source gas.
 

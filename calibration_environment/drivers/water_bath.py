@@ -1,7 +1,8 @@
 import collections
 
-import serial
-
+from calibration_environment.drivers.serial_port import (
+    send_serial_command_and_get_response,
+)
 
 """
 A driver for the Thermo Scientific NESLAB RTE 17 Temperature-controlled water bath
@@ -48,12 +49,7 @@ DEFAULT_DEVICE_ADDRESS_LSB = 0x01
 REPORTING_PRECISION = 0.01
 
 # Default protocol settings on the NESLAB RTE. They can be reconfigured.
-PROTOCOL_DEFAULTS = {
-    "baudrate": 19200,
-    "bytesize": serial.EIGHTBITS,
-    "parity": serial.PARITY_NONE,
-    "stopbits": serial.STOPBITS_ONE,
-}
+DEFAULT_BAUD_RATE = 19200
 
 COMMAND_NAME_TO_HEX = {
     # Read Commands
@@ -310,15 +306,20 @@ def _check_for_error_response(serial_packet: SerialPacket):
 def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     """ Send command packet bytes to the bath and collect response
     """
-    with serial.Serial(port, timeout=0.1, **PROTOCOL_DEFAULTS) as serial_port:
-        serial_port.write(command_packet.to_bytes())
 
-        # Use read() instead of readline() as the bath can sometime send bytes that get
-        # interpreted as EOL characters. Set it to read `more_than_enough_bytes` so that
-        # it definitely gets all the bytes in the response (longest message is 14 bytes)
-        # and only stops at the timeout
-        more_than_enough_bytes = 20
-        response_bytes = serial_port.read(more_than_enough_bytes)
+    # Use read() instead of readline() as the bath can sometime send bytes that get
+    # interpreted as EOL characters. Set it to read `more_than_enough_bytes` so that
+    # it definitely gets all the bytes in the response (longest message is 14 bytes)
+    # and only stops at the timeout
+    more_than_enough_bytes = 20
+
+    response_bytes = send_serial_command_and_get_response(
+        port=port,
+        command=command_packet.to_bytes(),
+        n_bytes=more_than_enough_bytes,
+        baud_rate=DEFAULT_BAUD_RATE,
+        timeout=0.1,
+    )
 
     try:
         serial_packet = SerialPacket.from_bytes(response_bytes)

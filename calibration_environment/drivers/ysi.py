@@ -48,3 +48,16 @@ def get_sensor_value(port: str, command: YSICommand) -> str:
     )
 
     return parse_ysi_response(response_bytes.decode("utf8"))
+
+
+def get_standard_sensor_values(port):
+    """ Get a standard complement of sensor values from a YSI sensor in our standard units. """
+    return pd.Series(
+        {
+            "Barometric pressure (mmHg)": get_sensor_value(
+                port, YSICommand.get_barometric_pressure_mmhg
+            ),
+            "DO (% sat)": get_sensor_value(port, YSICommand.get_do_pct_sat),
+            "Temperature (C)": get_sensor_value(port, YSICommand.get_temp_c),
+        }
+    )

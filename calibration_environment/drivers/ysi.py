@@ -19,15 +19,16 @@ class YSICommand(str, Enum):
 
 
 YSI_RESPONSE_TERMINATOR = b"\r\n$ACK\r\n"
+YSI_BAUD_RATE = 57600
 
 
 def parse_ysi_response(response_str):
-    """ Response format is something like "$49.9..$ACK.." for 49.9
+    """ Response format is something like "$49.9\r\n$ACK\r\n" for 49.9
     """
     return float(response_str[1 : -len(YSI_RESPONSE_TERMINATOR)])
 
 
-def get_sensor_value(port: str, command: YSICommand) -> str:
+def get_sensor_reading(port: str, command: YSICommand) -> str:
     """ Given a serial command, send it on a serial port and return the response.
     Handles YSI default serial settings and stuff.
 
@@ -43,7 +44,7 @@ def get_sensor_value(port: str, command: YSICommand) -> str:
         port=port,
         command=command.to_bytes_packet(),
         response_terminator=YSI_RESPONSE_TERMINATOR,
-        baud_rate=57600,
+        baud_rate=YSI_BAUD_RATE,
         timeout=1,
     )
 
@@ -54,10 +55,10 @@ def get_standard_sensor_values(port):
     """ Get a standard complement of sensor values from a YSI sensor in our standard units. """
     return pd.Series(
         {
-            "Barometric pressure (mmHg)": get_sensor_value(
+            "Barometric pressure (mmHg)": get_sensor_reading(
                 port, YSICommand.get_barometric_pressure_mmhg
             ),
-            "DO (% sat)": get_sensor_value(port, YSICommand.get_do_pct_sat),
-            "Temperature (C)": get_sensor_value(port, YSICommand.get_temp_c),
+            "DO (% sat)": get_sensor_reading(port, YSICommand.get_do_pct_sat),
+            "Temperature (C)": get_sensor_reading(port, YSICommand.get_temp_c),
         }
     )

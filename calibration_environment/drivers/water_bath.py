@@ -307,16 +307,14 @@ def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     """ Send command packet bytes to the bath and collect response
     """
 
-    # Use read() instead of readline() as the bath can sometime send bytes that get
-    # interpreted as EOL characters. Set it to read `more_than_enough_bytes` so that
-    # it definitely gets all the bytes in the response (longest message is 14 bytes)
-    # and only stops at the timeout
+    # longest message is 14 bytes: there's no consistent termination character in the water bath response,
+    # so use this to always listen until the timeout.
     more_than_enough_bytes = 20
 
     response_bytes = send_serial_command_and_get_response(
         port=port,
         command=command_packet.to_bytes(),
-        n_bytes=more_than_enough_bytes,
+        max_response_bytes=more_than_enough_bytes,
         baud_rate=DEFAULT_BAUD_RATE,
         timeout=0.1,
     )

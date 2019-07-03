@@ -10,7 +10,7 @@ def send_serial_command_and_get_response(
     port: str,
     command: bytes,
     response_terminator: Optional[bytes] = None,
-    n_bytes: Optional[int] = None,
+    max_response_bytes: Optional[int] = None,
     baud_rate: int = 19200,
     timeout: float = 0.1,
 ) -> bytes:
@@ -19,29 +19,28 @@ def send_serial_command_and_get_response(
     Args:
         port: serial port to use, e.g. "COM11"
         command: byte string to send
-        response_terminator: terminator to
-        n_bytes: maximum number of bytes in the response.
-            If provided, we'll only wait for this many characters in the response
+        response_terminator: if provided, response listening will terminate on this string
+        max_response_bytes: maximum number of bytes in the response.
+            If provided, we'll only wait for this many characters in the response.
+            If both response_terminator and max_response_bytes are provided,
+                either condition can terminate the response (whichever one happens first).
         baud_rate: baud rate for serial connection
         timeout: timeout for serial connection. Default: 0.1
 
     Returns:
-        byte string of response on the serial port
+        response byte string from the serial port
 
     Raises:
         various exceptions raised by serial.Serial if serial port is not ready
     """
-    if response_terminator is not None and n_bytes is not None:
-        raise ValueError("")
-
     logger.debug(f"Serial command on {port}: {command}")
 
     with serial.Serial(port, baudrate=baud_rate, timeout=timeout) as connection:
         connection.write(command)
         response = (
-            connection.read_until(response_terminator, n_bytes)
+            connection.read_until(response_terminator, max_response_bytes)
             if response_terminator
-            else connection.read(n_bytes)
+            else connection.read(max_response_bytes)
         )
 
     logger.debug(f"Serial response on {port}: {response}")

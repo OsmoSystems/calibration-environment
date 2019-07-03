@@ -1,12 +1,14 @@
 import sys
-import time
-import enum
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .equilibrate import check_temperature_equilibrated, check_gas_mixer_equilibrated
+from .equilibrate import (
+    wait_for_temperature_equilibration,
+    wait_for_gas_mixer_equilibration,
+)
 from .prepare import get_calibration_configuration
 
 logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
@@ -15,10 +17,6 @@ logging.basicConfig(
 )
 
 
-class CalibrationState(enum.Enum):
-    WAIT_FOR_TEMPERATURE_EQ = 0
-    WAIT_FOR_GAS_MIXER_EQ = 1
-    WAIT_FOR_SETPOINT_TIMEOUT = 2
 
 
 def get_all_sensor_data_stub(com_port_args, gas_mixer, water_bath):
@@ -51,7 +49,6 @@ def collect_data_to_csv(
     water_bath,
     setpoint,
     calibration_configuration,
-    equilibration_state,
     sequence_iteration_count=0,
     write_headers_to_file=True,
 ):
@@ -88,13 +85,6 @@ def collect_data_to_csv(
             "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
             "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
             "timestamp": datetime.now(),
-            "equilibration state": equilibration_state.name,
-            "temperature equilibrated": check_temperature_equilibrated(
-                water_bath, calibration_configuration.com_port_args["water_bath"]
-            ),
-            "gas mixer equilibrated": check_gas_mixer_equilibrated(
-                gas_mixer, calibration_configuration.com_port_args["gas_mixer"]
-            ),
             **dict(sensor_data),
         }
     )
@@ -143,63 +133,40 @@ def run(cli_args=None):
                     data=setpoint["temperature"],
                 )
 
-                CALIBRATION_STATE = CalibrationState.WAIT_FOR_TEMPERATURE_EQ
+                wait_for_temperature_equilibration(water_bath, water_bath_com_port)
+                # Set the gax mixer ratio
+                gas_mixer.start_constant_flow_mix(
+                    gas_mixer_com_port,
+                    setpoint["flow_rate_slpm"],
+                    setpoint["o2_target_gas_fraction"],
+                    calibration_configuration.o2_source_gas_fraction,
+                )
 
-                while True:
-                    if CALIBRATION_STATE == CalibrationState.WAIT_FOR_TEMPERATURE_EQ:
-                        temperature_equilibrated = check_temperature_equilibrated(
-                            water_bath, water_bath_com_port
-                        )
-                        if temperature_equilibrated:
-                            # Set the gax mixer ratio
-                            gas_mixer.start_constant_flow_mix(
-                                gas_mixer_com_port,
-                                setpoint["flow_rate_slpm"],
-                                setpoint["o2_target_gas_fraction"],
-                                calibration_configuration.o2_source_gas_fraction,
-                            )
-                            CALIBRATION_STATE = CalibrationState.WAIT_FOR_GAS_MIXER_EQ
+                wait_for_gas_mixer_equilibration(gas_mixer, gas_mixer_com_port)
 
-                    elif CALIBRATION_STATE == CalibrationState.WAIT_FOR_GAS_MIXER_EQ:
-                        gas_mixer_equilibrated = check_gas_mixer_equilibrated(
-                            gas_mixer, gas_mixer_com_port
-                        )
-                        if gas_mixer_equilibrated:
-                            # Start tracking how long to stay at this setpoint
-                            setpoint_equilibration_start = datetime.now()
-                            CALIBRATION_STATE = (
-                                CalibrationState.WAIT_FOR_SETPOINT_TIMEOUT
-                            )
-                            # TODO: Reduce or stop gas mixer flow rate
+                setpoint_equilibration_end_time = datetime.now() + timedelta(
+                    seconds=calibration_configuration.setpoint_wait_time
+                )
+                next_data_collection_time = datetime.now()
 
-                    elif (
-                        CALIBRATION_STATE == CalibrationState.WAIT_FOR_SETPOINT_TIMEOUT
-                    ):
-                        setpoint_duration = (
-                            datetime.now() - setpoint_equilibration_start
-                        )
-                        if (
-                            setpoint_duration.total_seconds()
-                            > calibration_configuration.setpoint_wait_time
-                        ):
-                            break
-                    else:
-                        raise ValueError(
-                            f"Invalid calibration state {CALIBRATION_STATE}"
-                        )
-
+                while datetime.now() < setpoint_equilibration_end_time:
                     # Wait before collecting next datapoint
-                    time.sleep(calibration_configuration.collection_interval)
+                    if datetime.now() < next_data_collection_time:
+                        time.sleep(0.1)  # No need to totally peg the CPU
+                        continue
+
                     collect_data_to_csv(
                         gas_mixer,
                         water_bath,
                         setpoint,
                         calibration_configuration,
-                        CALIBRATION_STATE,
                         sequence_iteration_count=sequence_iteration_count,
                         write_headers_to_file=write_headers_to_file,
                     )
                     write_headers_to_file = False
+                    next_data_collection_time = datetime.now() + timedelta(
+                        seconds=calibration_configuration.collection_interval
+                    )
 
             # Increment so we know which iteration we're on in the logs
             sequence_iteration_count += 1
@@ -208,6 +175,6 @@ def run(cli_args=None):
                 break
     finally:
         # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-        # gas_mixer.stop_flow(gas_mixer_com_port)
+        gas_mixer.stop_flow(gas_mixer_com_port)
         # water_bath.shutdown(water_bath_com_port)
         pass

@@ -44,7 +44,7 @@ def get_sensor_value(port: str, command: YSICommand) -> str:
         command=command.to_bytes_packet(),
         response_terminator=YSI_RESPONSE_TERMINATOR,
         baud_rate=57600,
-        timeout=0.1,
+        timeout=1,
     )
 
     return parse_ysi_response(response_bytes.decode("utf8"))

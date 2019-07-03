@@ -142,22 +142,14 @@ def _has_low_feed_pressure(alarm_str: str) -> bool:
     return bool(int(alarm_str) & _LOW_FEED_PRESSURE_ALARM_BIT)
 
 
-def _ppb_to_fraction(ppb_value: int) -> float:
+def _ppb_to_fraction(ppb_str: str) -> float:
     """ Convert a parts per billion as a string (coming from MFC) to a fraction """
-    return ppb_value / _ONE_BILLION
+    return int(ppb_str) / _ONE_BILLION
 
 
-def _fraction_to_ppb(fraction: float) -> int:
+def _fraction_to_ppb_str(fraction: float) -> str:
     """ Convert a fraction to a parts per billion number suitable for sending over serial """
-    return int(fraction * _ONE_BILLION)
-
-
-def _complimentary_ppb_value(ppb_value: int) -> int:
-    """ Get the complimentary parts-per-billion value that with this ppb value, adds up to one billion.
-    The gas mixer cares that ppb fractions add up to exactly one billion
-    So, use this instead of converting numbers to ppb individually.
-    """
-    return _ONE_BILLION - int(ppb_value)
+    return str(int(fraction * _ONE_BILLION))
 
 
 def _parse_flow_fraction(mfc_str: str) -> float:
@@ -167,7 +159,7 @@ def _parse_flow_fraction(mfc_str: str) -> float:
     """
     if all(character == "-" for character in mfc_str):
         return 0
-    return _ppb_to_fraction(int(mfc_str))
+    return _ppb_to_fraction(mfc_str)
 
 
 def _assert_expected_units(mixer_status_dict: Dict[str, str]) -> None:
@@ -376,8 +368,9 @@ def start_constant_flow_mix(
     target_o2_source_gas_fraction = _get_o2_source_gas_fraction(
         target_o2_fraction, o2_source_gas_o2_fraction
     )
-    o2_source_gas_ppb = _fraction_to_ppb(target_o2_source_gas_fraction)
-    n2_ppb = _complimentary_ppb_value(o2_source_gas_ppb)
+    n2_fraction = 1 - target_o2_source_gas_fraction
+    n2_ppb = _fraction_to_ppb_str(n2_fraction)
+    o2_source_gas_ppb = _fraction_to_ppb_str(target_o2_source_gas_fraction)
     min_mfc_flow_rate = 2.5  # flow rate of our smallest MFC
     _assert_valid_mix(target_flow_rate_slpm, target_o2_source_gas_fraction)
 

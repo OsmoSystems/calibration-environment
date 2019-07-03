@@ -24,28 +24,22 @@ def test_has_low_feed_pressure(alarm_str, expected):
 
 class TestPpbConversions:
     fractions_and_corresponding_ppbs = [
-        (0.005, 5000000),
-        (0, 0),
-        (0.8, 8e8),
-        (math.pi / 10, 314159265),
+        (0.005, "5000000"),
+        (0, "0"),
+        (math.pi / 10, "314159265"),
     ]
 
     @pytest.mark.parametrize("fraction, ppb", fractions_and_corresponding_ppbs)
     def test_ppb_to_fraction(self, fraction, ppb):
-        assert module._ppb_to_fraction(5000000) == 0.005
+        assert module._ppb_to_fraction("5000000") == 0.005
 
     @pytest.mark.parametrize("fraction, ppb", fractions_and_corresponding_ppbs)
     def test_fraction_to_ppb(self, fraction, ppb):
-        assert module._fraction_to_ppb(fraction) == ppb
+        assert module._fraction_to_ppb_str(fraction) == ppb
 
-    @pytest.mark.parametrize("from_mfc, expected", [("------", 0), (f"{1e8:.0f}", 0.1)])
-    def test_parse_flow_fraction(self, from_mfc, expected):
-        assert module._parse_flow_fraction(from_mfc) == expected
-
-    def test_complimentary_ppb_value(self):
-        ppb_value = 999999999
-        expected = 1
-        assert module._complimentary_ppb_value(ppb_value) == expected
+    @pytest.mark.parametrize("from_mfc, expected", [("------", 0), (str(1e8), 0.1)])
+    def _parse_flow_fraction(self, from_mfc, expected):
+        assert module._fraction_to_ppb_str(from_mfc) == expected
 
 
 class TestSendSequenceWithExpectedResponses:

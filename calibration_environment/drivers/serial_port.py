@@ -36,7 +36,7 @@ def send_serial_command_and_get_response(
 
     logger.debug(f"Serial command on {port}: {command}")
 
-    with serial.Serial(port, baud_rate=baud_rate, timeout=timeout) as connection:
+    with serial.Serial(port, baudrate=baud_rate, timeout=timeout) as connection:
         connection.write(command)
         response = (
             connection.read_until(response_terminator, n_bytes)

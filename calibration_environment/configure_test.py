@@ -37,6 +37,21 @@ class TestParseArgs(object):
 
         assert module._parse_args(args_in) == expected_args_out
 
+    def test_shorthand_args_parsed_appropriately(self):
+        args_in = ["-s", "experiment.csv", "-o2", ".21", "--wait-time", "300"]
+
+        expected_args_out = {
+            "setpoint_sequence_csv_filepath": "experiment.csv",
+            "o2_source_gas_fraction": 0.21,
+            "loop": False,
+            "gas_mixer_com_port": "COM22",
+            "water_bath_com_port": "COM21",
+            "collection_interval": 60,
+            "setpoint_wait_time": 300,
+        }
+
+        assert module._parse_args(args_in) == expected_args_out
+
     def test_missing_required_args_throws(self):
         args_in: List[str] = []
         with pytest.raises(SystemExit):

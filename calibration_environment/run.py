@@ -51,11 +51,8 @@ def collect_data_to_csv(
         output csv along with configuration data, optionally writing column headers.
 
         Args:
-            gas_mixer: A gas_mixer driver module or stub
-            water_bath: A water_bath driver module or stub
             setpoint: A setpoint DataFrame row
             calibration_configuration: A CalibrationConfiguration object
-            equilibration_state: The current equilibration state of the system
             sequence_iteration_count: The current iteration of looping over the setpoint sequence file. Int.
             write_headers_to_file: Whether or not to write csv headers to output file.
     """
@@ -137,6 +134,10 @@ def run(cli_args=None):
                     time.sleep(0.1)  # No need to totally peg the CPU
                     continue
 
+                next_data_collection_time = next_data_collection_time + timedelta(
+                    seconds=calibration_configuration.collection_interval
+                )
+
                 collect_data_to_csv(
                     setpoint,
                     calibration_configuration,
@@ -144,9 +145,6 @@ def run(cli_args=None):
                     write_headers_to_file=write_headers_to_file,
                 )
                 write_headers_to_file = False
-                next_data_collection_time = datetime.now() + timedelta(
-                    seconds=calibration_configuration.collection_interval
-                )
 
         # Increment so we know which iteration we're on in the logs
         sequence_iteration_count += 1

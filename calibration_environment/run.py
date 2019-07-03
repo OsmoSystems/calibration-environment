@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from .drivers import gas_mixer
+from .drivers import water_bath
 from .equilibrate import (
     wait_for_temperature_equilibration,
     wait_for_gas_mixer_equilibration,
@@ -17,13 +19,7 @@ logging.basicConfig(
 )
 
 
-
-
-def get_all_sensor_data_stub(com_port_args, gas_mixer, water_bath):
-    return pd.Series({"data": 1}).add_prefix("stub ")
-
-
-def get_all_sensor_data(com_port_args, gas_mixer, water_bath):
+def get_all_sensor_data(com_port_args):
     gas_mixer_status = gas_mixer.get_mixer_status(
         com_port_args["gas_mixer"]
     ).add_prefix("gas mixer ")
@@ -45,8 +41,6 @@ def get_all_sensor_data(com_port_args, gas_mixer, water_bath):
 
 
 def collect_data_to_csv(
-    gas_mixer,
-    water_bath,
     setpoint,
     calibration_configuration,
     sequence_iteration_count=0,
@@ -65,17 +59,9 @@ def collect_data_to_csv(
             sequence_iteration_count: The current iteration of looping over the setpoint sequence file. Int.
             write_headers_to_file: Whether or not to write csv headers to output file.
     """
-    # Use the stub if not using real sensors
-    sensor_data_getter = (
-        get_all_sensor_data_stub
-        if calibration_configuration.dry_run
-        else get_all_sensor_data
-    )
 
     # Read from each sensor and add to the DataFrame
-    sensor_data = sensor_data_getter(
-        calibration_configuration.com_port_args, gas_mixer, water_bath
-    )
+    sensor_data = get_all_sensor_data(calibration_configuration.com_port_args)
 
     row = pd.Series(
         {
@@ -108,13 +94,6 @@ def run(cli_args=None):
 
         logging.info(f"Logging sensor data to {calibration_configuration.output_csv}")
 
-        if calibration_configuration.dry_run:
-            from .drivers.stubs import gas_mixer
-            from .drivers.stubs import water_bath
-        else:
-            from .drivers import gas_mixer  # type: ignore # already defined warning
-            from .drivers import water_bath  # type: ignore # already defined warning
-
         water_bath_com_port = calibration_configuration.com_port_args["water_bath"]
         gas_mixer_com_port = calibration_configuration.com_port_args["gas_mixer"]
 
@@ -133,7 +112,7 @@ def run(cli_args=None):
                     data=setpoint["temperature"],
                 )
 
-                wait_for_temperature_equilibration(water_bath, water_bath_com_port)
+                wait_for_temperature_equilibration(water_bath_com_port)
                 # Set the gax mixer ratio
                 gas_mixer.start_constant_flow_mix(
                     gas_mixer_com_port,
@@ -142,7 +121,7 @@ def run(cli_args=None):
                     calibration_configuration.o2_source_gas_fraction,
                 )
 
-                wait_for_gas_mixer_equilibration(gas_mixer, gas_mixer_com_port)
+                wait_for_gas_mixer_equilibration(gas_mixer_com_port)
 
                 setpoint_equilibration_end_time = datetime.now() + timedelta(
                     seconds=calibration_configuration.setpoint_wait_time
@@ -156,8 +135,6 @@ def run(cli_args=None):
                         continue
 
                     collect_data_to_csv(
-                        gas_mixer,
-                        water_bath,
                         setpoint,
                         calibration_configuration,
                         sequence_iteration_count=sequence_iteration_count,

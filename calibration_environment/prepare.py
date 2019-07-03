@@ -14,7 +14,6 @@ CalibrationConfiguration = namedtuple(
         "com_port_args",
         "o2_source_gas_fraction",
         "loop",
-        "dry_run",
         "output_csv",
         "collection_interval",
         "setpoint_wait_time",
@@ -49,14 +48,6 @@ def _parse_args(args: List[str]) -> Dict:
         action="store_true",
         default=False,
         help="loop through the setpoint sequence until it is stopped manually",
-    )
-
-    arg_parser.add_argument(
-        "--dry-run",
-        required=False,
-        action="store_true",
-        default=False,
-        help="disable using real sensors",
     )
 
     arg_parser.add_argument(
@@ -128,7 +119,6 @@ def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfigurati
         com_port_args=com_port_args,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],
-        dry_run=args["dry_run"],
         output_csv=_get_output_filename(),
         collection_interval=args["collection_interval"],
         setpoint_wait_time=args["setpoint_wait_time"],

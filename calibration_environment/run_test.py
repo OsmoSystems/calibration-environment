@@ -1,10 +1,28 @@
+import pytest
 import pandas as pd
 
 from .prepare import CalibrationConfiguration
 from . import run as module
 
 
-def test_csv_is_created(tmp_path, mocker):
+@pytest.fixture
+def mock_drivers(mocker):
+    mocker.patch.object(module.gas_mixer, "start_constant_flow_mix")
+    mocker.patch.object(module.gas_mixer, "stop_flow")
+    mocker.patch.object(module.gas_mixer, "get_mixer_status")
+    mocker.patch.object(module.gas_mixer, "get_gas_ids")
+
+    mocker.patch.object(module.water_bath, "send_command_and_parse_response")
+    mocker.patch.object(module.water_bath, "initialize")
+
+
+@pytest.fixture
+def mock_get_all_sensor_data(mocker):
+    mock_get_all_sensor_data = mocker.patch.object(module, "get_all_sensor_data")
+    mock_get_all_sensor_data.return_value = pd.Series({"data": 1}).add_prefix("stub ")
+
+
+def test_csv_is_created(tmp_path, mocker, mock_drivers, mock_get_all_sensor_data):
     output_filepath = tmp_path / "test.csv"
 
     setpoint_configuration = pd.DataFrame(
@@ -34,7 +52,6 @@ def test_csv_is_created(tmp_path, mocker):
         com_port_args={"gas_mixer": "COM22", "water_bath": "COM21"},
         o2_source_gas_fraction=0.21,
         loop=False,
-        dry_run=True,
         output_csv=output_filepath,
         collection_interval=0.1,
         setpoint_wait_time=0.1,

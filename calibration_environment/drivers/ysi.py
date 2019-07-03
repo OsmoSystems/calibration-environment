@@ -1,21 +1,24 @@
 from enum import Enum
 
+import pandas as pd
+
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
 )
 
 
 class YSICommand(str, Enum):
-    get_barometric_pressure = "Get Normal SENSOR_BAR_KPA"
+    get_barometric_pressure_mmhg = "Get Normal SENSOR_BAR_MMHG"
+    get_barometric_pressure_kpa = "Get Normal SENSOR_BAR_KPA"
     get_do_pct_sat = "Get Normal SENSOR_DO_PERCENT_SAT"
     get_do_mg_l = "Get Normal SENSOR_DO_MG_L"
     get_temp_c = "Get Normal SENSOR_TEMP_C"
 
     def to_bytes_packet(self) -> bytes:
-        return bytes(f"$ADC {self.value}..", encoding="utf8")
+        return bytes(f"$ADC {self.value}\r\n", encoding="utf8")
 
 
-YSI_RESPONSE_TERMINATOR = b"..$ACK.."
+YSI_RESPONSE_TERMINATOR = b"\r\n$ACK\r\n"
 
 
 def parse_ysi_response(response_str):
@@ -40,6 +43,7 @@ def get_sensor_value(port: str, command: YSICommand) -> str:
         port=port,
         command=command.to_bytes_packet(),
         response_terminator=YSI_RESPONSE_TERMINATOR,
+        baud_rate=57600,
         timeout=0.1,
     )
 

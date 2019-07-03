@@ -26,5 +26,5 @@ class TestGetSensorValue:
             baud_rate=57600,
             command=b"$ADC Get Normal SENSOR_DO_PERCENT_SAT\r\n",
             response_terminator=module.YSI_RESPONSE_TERMINATOR,
-            timeout=0.1,
+            timeout=1,
         )

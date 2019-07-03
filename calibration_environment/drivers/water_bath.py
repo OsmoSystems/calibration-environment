@@ -98,10 +98,17 @@ _QUALIFIER_HEX_TO_PRECISION = {
 
 
 class InvalidResponse(ValueError):
+    # Error class used when we can't interpret the response from the bath
     pass
 
 
 class ErrorResponse(ValueError):
+    # Error class used when we get an Error response from the bath
+    pass
+
+
+class PrecisionMismatch(ValueError):
+    # Error class used when the bath's precision doesn't match our REPORTING_PRECISION
     pass
 
 
@@ -152,7 +159,7 @@ class SerialPacket:
         self.validate()
 
     def __str__(self):
-        bytes_as_hex = f" ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
+        bytes_as_hex = " ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
         return f"bytes: {bytes_as_hex}, attributes: {str(self.__dict__)}"
 
     def __eq__(self, other):
@@ -220,7 +227,7 @@ class SerialPacket:
 
         if errors:
             raise ValueError(
-                f"Serial packet invalid.\n Errors: {errors}.\n Packet: {self}"
+                f"\nSerial packet invalid. \nErrors: {errors}. \nPacket: {self}"
             )
 
 
@@ -244,7 +251,21 @@ def _calculate_checksum(message_bytes: bytes) -> int:
     return bitwise_inversion
 
 
-def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
+def _validate_precision_matches(precision, expected_precision):
+    """ Validate that the precision sent back by the bath is the same precision we're
+        using to send data.
+    """
+    if precision != expected_precision:
+        raise PrecisionMismatch(
+            f"\nThe precision reported by the bath ({precision}) doesn't match "
+            f"the precision we're using to send data ({expected_precision})."
+            f"\nRun initialize() to set the bath to use our desired precision."
+        )
+
+
+def _parse_data_bytes_as_float(
+    qualified_data_bytes: bytes, expected_precision: float
+) -> float:
     """ Parse data bytes into a float value with appropriate precision.
 
         From the datasheet:
@@ -264,6 +285,8 @@ def _parse_data_bytes_as_float(qualified_data_bytes: bytes) -> float:
 
     precision = _QUALIFIER_HEX_TO_PRECISION[qualifier]
 
+    _validate_precision_matches(precision, expected_precision)
+
     return int.from_bytes(data_bytes, byteorder="big") * precision
 
 
@@ -277,9 +300,10 @@ def _check_for_error_response(serial_packet: SerialPacket):
         error = error_types.get(error_type, "Unknown")
 
         raise ErrorResponse(
-            f"Bath responded with error response."
-            f"Error: {error}. "
-            f"Echo of command byte as received: 0x{echoed_command:02X}."
+            f"\nBath responded with error response. "
+            f"\nSerial packet: {serial_packet}. "
+            f"\nError: {error}. "
+            f"\nEcho of command byte as received: 0x{echoed_command:02X}."
         )
 
 
@@ -291,23 +315,24 @@ def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
 
         # Use read() instead of readline() as the bath can sometime send bytes that get
         # interpreted as EOL characters. Set it to read `more_than_enough_bytes` so that
-        # it definitely gets all the bytes in the respose (longest message is 14 bytes)
+        # it definitely gets all the bytes in the response (longest message is 14 bytes)
         # and only stops at the timeout
         more_than_enough_bytes = 20
         response_bytes = serial_port.read(more_than_enough_bytes)
 
-        try:
-            serial_packet = SerialPacket.from_bytes(response_bytes)
-        except Exception as e:
-            raise InvalidResponse(
-                f"Unable to parse response from water bath. \n"
-                f"Response bytes: {response_bytes}. \n"
-                f"Error: {e}. \n"
-            )
+    try:
+        serial_packet = SerialPacket.from_bytes(response_bytes)
+    except Exception as e:
+        raise InvalidResponse(
+            f"\nUnable to parse response from water bath. "
+            f"\nResponse bytes: {response_bytes}. "
+            f"\nError: {e}. "
+            f"\nPossible solution: ensure the bath is in 'serial communication' mode"
+        )
 
-        _check_for_error_response(serial_packet)
+    _check_for_error_response(serial_packet)
 
-        return serial_packet
+    return serial_packet
 
 
 def _construct_command_packet(command_name: str, data: float = None):
@@ -350,29 +375,9 @@ def send_command_and_parse_response(
     command_packet = _construct_command_packet(command_name, data)
     response_packet = _send_command(port, command_packet)
 
-    return _parse_data_bytes_as_float(response_packet.data_bytes)
+    return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
 
 
-"""
-The "Set On/Off Array" command has a unique data structure in which each data byte
-represents a single setting that can be toggled (including turning on/off the
-bath).
-
-Command and response format: CA 00 01 81 08 (d1)...(d8)(cs)
-Data bytes meaning:
-    (di: 0 = off, 1 = on, 2 = no change)
-    d1 = unit on/off
-    d2 = sensor enable
-    d3 = faults enabled
-    d4 = mute
-    d5 = auto restart
-    d6 = 0.01°C enable
-    d7 = full range cool enable
-    d8 = serial comm enable
-
-e.g. to just turn on and change nothing else:
-    CA 00 01 81 08 01 02 02 02 02 02 02 02 66
-"""
 OFF = 0
 ON = 1
 NO_CHANGE = 2  # Don't change the current bath setting
@@ -440,7 +445,27 @@ def _validate_initialized_settings(settings: OnOffArraySettings):
 def send_settings_command_and_parse_response(
     port: str, settings: OnOffArraySettings
 ) -> OnOffArraySettings:
-    """ Send a settings command to the water bath and parse the response data
+    """ Send a settings command to the water bath and parse the response data.
+
+        The "Set On/Off Array" command has a unique data structure in which each data byte
+        represents a single setting that can be toggled (including turning on/off the bath).
+
+        Data bytes meaning:
+            (di: 0 = off, 1 = on, 2 = no change)
+            d1 = unit on/off
+            d2 = sensor enable
+            d3 = faults enabled
+            d4 = mute
+            d5 = auto restart
+            d6 = 0.01°C enable
+            d7 = full range cool enable
+            d8 = serial comm enable
+
+        We use an OnOffArraySettings namedtuple to capture each of these settings
+
+        e.g. to just turn on the bath and change nothing else:
+            bytes: CA 00 01 81 08 01 02 02 02 02 02 02 02 66
+            OnOffArraySettings(1, 2, 2, 2, 2, 2, 2, 2)
 
         Args:
             port: The comm port used by the water bath

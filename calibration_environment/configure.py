@@ -6,15 +6,18 @@ from typing import List, Dict
 
 import pandas as pd
 
+DEFAULT_GAS_MIXER_COM_PORT = "COM22"
+DEFAULT_WATER_BATH_COM_PORT = "COM21"
+
 CalibrationConfiguration = namedtuple(
     "CalibrationConfiguration",
     [
-        "sequence_csv",  # Filepath to setpoint sequence csv file
+        "setpoint_sequence_csv_filepath",
         "setpoints",
-        "com_port_args",
+        "com_ports",
         "o2_source_gas_fraction",
         "loop",
-        "output_csv",
+        "output_csv_filepath",
         "collection_interval",
         "setpoint_wait_time",
     ],
@@ -27,15 +30,17 @@ def _parse_args(args: List[str]) -> Dict:
     )
 
     arg_parser.add_argument(
-        "--sequence",
+        "-s",
+        "--setpoint-sequence-filepath",
         required=True,
         type=str,
         help="setpoint sequence csv filepath",
-        dest="sequence_csv",
+        dest="setpoint_sequence_csv_filepath",
     )
 
     arg_parser.add_argument(
-        "--o2fraction",
+        "-o2",
+        "--o2-source-fraction",
         dest="o2_source_gas_fraction",
         required=True,
         type=float,
@@ -54,7 +59,7 @@ def _parse_args(args: List[str]) -> Dict:
         "--gas-mixer-port",
         dest="gas_mixer_com_port",
         required=False,
-        default="COM22",
+        default=DEFAULT_GAS_MIXER_COM_PORT,
         help="override gas mixer COM port address, defaults to COM22",
     )
 
@@ -62,7 +67,7 @@ def _parse_args(args: List[str]) -> Dict:
         "--water-bath-port",
         dest="water_bath_com_port",
         required=False,
-        default="COM21",
+        default=DEFAULT_WATER_BATH_COM_PORT,
         help="overrider water bath COM port address, defaults to COM21",
     )
 
@@ -108,18 +113,18 @@ def _get_output_filename():
 def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfiguration:
     args = _parse_args(cli_args)
 
-    com_port_args = {
+    com_ports = {
         "gas_mixer": args["gas_mixer_com_port"],
         "water_bath": args["water_bath_com_port"],
     }
 
     calibration_configuration = CalibrationConfiguration(
-        sequence_csv=args["sequence_csv"],
-        setpoints=_open_setpoint_sequence_file(args["sequence_csv"]),
-        com_port_args=com_port_args,
+        setpoint_sequence_csv_filepath=args["setpoint_sequence_csv_filepath"],
+        setpoints=_open_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"]),
+        com_ports=com_ports,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],
-        output_csv=_get_output_filename(),
+        output_csv_filepath=_get_output_filename(),
         collection_interval=args["collection_interval"],
         setpoint_wait_time=args["setpoint_wait_time"],
     )

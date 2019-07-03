@@ -9,9 +9,9 @@ from . import configure as module
 class TestParseArgs(object):
     def test_all_args_parsed_appropriately(self):
         args_in = [
-            "--sequence",
+            "--setpoint-sequence-filepath",
             "experiment.csv",
-            "--o2fraction",
+            "--o2-source-fraction",
             ".21",
             "--loop",
             "--gas-mixer-port",
@@ -25,7 +25,7 @@ class TestParseArgs(object):
         ]
 
         expected_args_out = {
-            "sequence_csv": "experiment.csv",
+            "setpoint_sequence_csv_filepath": "experiment.csv",
             "o2_source_gas_fraction": 0.21,
             "loop": True,
             "gas_mixer_com_port": "COM1",
@@ -56,23 +56,15 @@ class TestGetCalibrationConfiguration(object):
             module, "_get_output_filename"
         ).return_value = sentinel.filepath
 
-        args_in = [
-            "--sequence",
-            "experiment.csv",
-            "--o2fraction",
-            ".21",
-            "--loop",
-            "--wait-time",
-            "300",
-        ]
+        args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop", "--wait-time", "300"]
 
         expected_configuration = module.CalibrationConfiguration(
-            sequence_csv="experiment.csv",
+            setpoint_sequence_csv_filepath="experiment.csv",
             setpoints=sentinel.setpoints,
-            com_port_args={"gas_mixer": "COM22", "water_bath": "COM21"},
+            com_ports={"gas_mixer": "COM22", "water_bath": "COM21"},
             o2_source_gas_fraction=0.21,
             loop=True,
-            output_csv=sentinel.filepath,
+            output_csv_filepath=sentinel.filepath,
             collection_interval=60,
             setpoint_wait_time=300,
         )

@@ -47,12 +47,12 @@ def test_csv_is_created(tmp_path, mocker, mock_drivers, mock_get_all_sensor_data
     mocker.patch.object(
         module, "get_calibration_configuration"
     ).return_value = CalibrationConfiguration(
-        sequence_csv="experiment.csv",
+        setpoint_sequence_csv_filepath="experiment.csv",
         setpoints=setpoint_configuration,
-        com_port_args={"gas_mixer": "COM22", "water_bath": "COM21"},
+        com_ports={"gas_mixer": "COM22", "water_bath": "COM21"},
         o2_source_gas_fraction=0.21,
         loop=False,
-        output_csv=output_filepath,
+        output_csv_filepath=output_filepath,
         collection_interval=0.1,
         setpoint_wait_time=0.1,
     )

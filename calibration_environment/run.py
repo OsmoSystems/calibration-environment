@@ -19,20 +19,20 @@ logging.basicConfig(
 )
 
 
-def get_all_sensor_data(com_port_args):
-    gas_mixer_status = gas_mixer.get_mixer_status(
-        com_port_args["gas_mixer"]
-    ).add_prefix("gas mixer ")
+def get_all_sensor_data(com_ports):
+    gas_mixer_status = gas_mixer.get_mixer_status(com_ports["gas_mixer"]).add_prefix(
+        "gas mixer "
+    )
 
-    gas_ids = gas_mixer.get_gas_ids(com_port_args["gas_mixer"]).add_suffix(" gas ID")
+    gas_ids = gas_mixer.get_gas_ids(com_ports["gas_mixer"]).add_suffix(" gas ID")
 
     water_bath_status = pd.Series(
         {
             "internal temperature (C)": water_bath.send_command_and_parse_response(
-                com_port_args["water_bath"], "Read Internal Temperature"
+                com_ports["water_bath"], "Read Internal Temperature"
             ),
             "external sensor temperature (C)": water_bath.send_command_and_parse_response(
-                com_port_args["water_bath"], "Read External Sensor"
+                com_ports["water_bath"], "Read External Sensor"
             ),
         }
     ).add_prefix("water bath ")
@@ -61,7 +61,7 @@ def collect_data_to_csv(
     """
 
     # Read from each sensor and add to the DataFrame
-    sensor_data = get_all_sensor_data(calibration_configuration.com_port_args)
+    sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
 
     row = pd.Series(
         {
@@ -77,7 +77,7 @@ def collect_data_to_csv(
 
     # Use mode="a" to append the row to the file
     pd.DataFrame(row).T.to_csv(
-        calibration_configuration.output_csv,
+        calibration_configuration.output_csv_filepath,
         index=False,
         header=write_headers_to_file,
         mode="a",
@@ -85,73 +85,75 @@ def collect_data_to_csv(
 
 
 def run(cli_args=None):
-    try:
-        if cli_args is None:
-            # First argument is the name of the command itself, not an "argument" we want to parse
-            cli_args = sys.argv[1:]
-        # Parse the configuration parameters from cli args
-        calibration_configuration = get_calibration_configuration(cli_args)
 
-        logging.info(f"Logging sensor data to {calibration_configuration.output_csv}")
+    if cli_args is None:
+        # First argument is the name of the command itself, not an "argument" we want to parse
+        cli_args = sys.argv[1:]
+    # Parse the configuration parameters from cli args
+    calibration_configuration = get_calibration_configuration(cli_args)
 
-        water_bath_com_port = calibration_configuration.com_port_args["water_bath"]
-        gas_mixer_com_port = calibration_configuration.com_port_args["gas_mixer"]
+    logging.info(
+        f"Logging sensor data to {calibration_configuration.output_csv_filepath}"
+    )
 
-        water_bath.initialize(water_bath_com_port)
+    water_bath_com_port = calibration_configuration.com_ports["water_bath"]
+    gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
 
-        sequence_iteration_count = 0
-        write_headers_to_file = True
+    water_bath.initialize(water_bath_com_port)
 
-        while True:
+    sequence_iteration_count = 0
+    write_headers_to_file = True
 
-            for i, setpoint in calibration_configuration.setpoints.iterrows():
+    while True:
 
-                water_bath.send_command_and_parse_response(
-                    water_bath_com_port,
-                    command_name="Set Setpoint",
-                    data=setpoint["temperature"],
+        for _, setpoint in calibration_configuration.setpoints.iterrows():
+
+            water_bath.send_command_and_parse_response(
+                water_bath_com_port,
+                command_name="Set Setpoint",
+                data=setpoint["temperature"],
+            )
+            wait_for_temperature_equilibration(water_bath_com_port)
+
+            # Set the gas mixer ratio
+            # TODO: Equilibration Procedure Software Implementation
+            # https://app.asana.com/0/1123279738062524/1128578386488633
+            gas_mixer.start_constant_flow_mix(
+                gas_mixer_com_port,
+                setpoint["flow_rate_slpm"],
+                setpoint["o2_target_gas_fraction"],
+                calibration_configuration.o2_source_gas_fraction,
+            )
+            wait_for_gas_mixer_equilibration(gas_mixer_com_port)
+
+            setpoint_equilibration_end_time = datetime.now() + timedelta(
+                seconds=calibration_configuration.setpoint_wait_time
+            )
+            next_data_collection_time = datetime.now()
+
+            while datetime.now() < setpoint_equilibration_end_time:
+                # Wait before collecting next datapoint
+                if datetime.now() < next_data_collection_time:
+                    time.sleep(0.1)  # No need to totally peg the CPU
+                    continue
+
+                collect_data_to_csv(
+                    setpoint,
+                    calibration_configuration,
+                    sequence_iteration_count=sequence_iteration_count,
+                    write_headers_to_file=write_headers_to_file,
+                )
+                write_headers_to_file = False
+                next_data_collection_time = datetime.now() + timedelta(
+                    seconds=calibration_configuration.collection_interval
                 )
 
-                wait_for_temperature_equilibration(water_bath_com_port)
-                # Set the gax mixer ratio
-                gas_mixer.start_constant_flow_mix(
-                    gas_mixer_com_port,
-                    setpoint["flow_rate_slpm"],
-                    setpoint["o2_target_gas_fraction"],
-                    calibration_configuration.o2_source_gas_fraction,
-                )
+        # Increment so we know which iteration we're on in the logs
+        sequence_iteration_count += 1
 
-                wait_for_gas_mixer_equilibration(gas_mixer_com_port)
+        if not calibration_configuration.loop:
+            break
 
-                setpoint_equilibration_end_time = datetime.now() + timedelta(
-                    seconds=calibration_configuration.setpoint_wait_time
-                )
-                next_data_collection_time = datetime.now()
-
-                while datetime.now() < setpoint_equilibration_end_time:
-                    # Wait before collecting next datapoint
-                    if datetime.now() < next_data_collection_time:
-                        time.sleep(0.1)  # No need to totally peg the CPU
-                        continue
-
-                    collect_data_to_csv(
-                        setpoint,
-                        calibration_configuration,
-                        sequence_iteration_count=sequence_iteration_count,
-                        write_headers_to_file=write_headers_to_file,
-                    )
-                    write_headers_to_file = False
-                    next_data_collection_time = datetime.now() + timedelta(
-                        seconds=calibration_configuration.collection_interval
-                    )
-
-            # Increment so we know which iteration we're on in the logs
-            sequence_iteration_count += 1
-
-            if not calibration_configuration.loop:
-                break
-    finally:
-        # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-        gas_mixer.stop_flow(gas_mixer_com_port)
-        # water_bath.shutdown(water_bath_com_port)
-        pass
+    gas_mixer.stop_flow(gas_mixer_com_port)
+    # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
+    # water_bath.shutdown(water_bath_com_port)

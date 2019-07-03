@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from .prepare import CalibrationConfiguration
+from .configure import CalibrationConfiguration
 from . import run as module
 
 

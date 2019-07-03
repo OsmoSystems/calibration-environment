@@ -11,7 +11,7 @@ from .equilibrate import (
     wait_for_temperature_equilibration,
     wait_for_gas_mixer_equilibration,
 )
-from .prepare import get_calibration_configuration
+from .configure import get_calibration_configuration
 
 logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
 logging.basicConfig(

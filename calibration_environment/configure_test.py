@@ -3,7 +3,7 @@ from unittest.mock import sentinel
 
 import pytest
 
-from . import prepare as module
+from . import configure as module
 
 
 class TestParseArgs(object):

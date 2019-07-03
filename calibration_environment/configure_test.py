@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from unittest.mock import sentinel
 
@@ -56,6 +57,8 @@ class TestGetCalibrationConfiguration(object):
             module, "_get_output_filename"
         ).return_value = sentinel.filepath
 
+        start_date = datetime.now()
+
         args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop", "--wait-time", "300"]
 
         expected_configuration = module.CalibrationConfiguration(
@@ -69,6 +72,6 @@ class TestGetCalibrationConfiguration(object):
             setpoint_wait_time=300,
         )
 
-        actual_configuration = module.get_calibration_configuration(args_in)
+        actual_configuration = module.get_calibration_configuration(args_in, start_date)
 
         assert expected_configuration == actual_configuration

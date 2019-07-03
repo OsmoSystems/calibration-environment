@@ -60,9 +60,10 @@ def collect_data_to_csv(
     # Read from each sensor and add to the DataFrame
     sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
 
-    row = pd.Series(
+    row = pd.DataFrame(
         {
-            "iteration": sequence_iteration_count,
+            # Use an array to coerce the df to use the dict keys as the index
+            "iteration": [sequence_iteration_count],
             "setpoint temperature": setpoint["temperature"],
             "setpoint flow rate": setpoint["flow_rate_slpm"],
             "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
@@ -73,7 +74,7 @@ def collect_data_to_csv(
     )
 
     # Use mode="a" to append the row to the file
-    pd.DataFrame(row).T.to_csv(
+    row.to_csv(
         calibration_configuration.output_csv_filepath,
         index=False,
         header=write_headers_to_file,
@@ -82,12 +83,13 @@ def collect_data_to_csv(
 
 
 def run(cli_args=None):
+    start_date = datetime.now()
 
     if cli_args is None:
         # First argument is the name of the command itself, not an "argument" we want to parse
         cli_args = sys.argv[1:]
     # Parse the configuration parameters from cli args
-    calibration_configuration = get_calibration_configuration(cli_args)
+    calibration_configuration = get_calibration_configuration(cli_args, start_date)
 
     logging.info(
         f"Logging sensor data to {calibration_configuration.output_csv_filepath}"

@@ -104,13 +104,13 @@ def iso_datetime_for_filename(datetime_):
     return datetime_.strftime("%Y-%m-%d--%H-%M-%S")
 
 
-def _get_output_filename():
-    start_date = datetime.now()
-
+def _get_output_filename(start_date):
     return f"{iso_datetime_for_filename(start_date)}_calibration.csv"
 
 
-def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfiguration:
+def get_calibration_configuration(
+    cli_args: List[str], start_date: datetime
+) -> CalibrationConfiguration:
     args = _parse_args(cli_args)
 
     com_ports = {
@@ -124,7 +124,7 @@ def get_calibration_configuration(cli_args: List[str]) -> CalibrationConfigurati
         com_ports=com_ports,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],
-        output_csv_filepath=_get_output_filename(),
+        output_csv_filepath=_get_output_filename(start_date),
         collection_interval=args["collection_interval"],
         setpoint_wait_time=args["setpoint_wait_time"],
     )

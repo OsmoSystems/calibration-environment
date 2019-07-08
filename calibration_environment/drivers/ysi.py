@@ -7,6 +7,10 @@ from calibration_environment.drivers.serial_port import (
 )
 
 
+class InvalidYsiResponse(Exception):
+    pass
+
+
 class YSICommand(str, Enum):
     get_barometric_pressure_mmhg = "Get Normal SENSOR_BAR_MMHG"
     get_barometric_pressure_kpa = "Get Normal SENSOR_BAR_KPA"
@@ -18,14 +22,34 @@ class YSICommand(str, Enum):
         return bytes(f"$ADC {self.value}\r\n", encoding="utf8")
 
 
-YSI_RESPONSE_TERMINATOR = b"\r\n$ACK\r\n"
-YSI_BAUD_RATE = 57600
+_YSI_RESPONSE_TERMINATOR = b"\r\n$ACK\r\n"
+_YSI_RESPONSE_INITIATOR = b"$"
+_YSI_BAUD_RATE = 57600
 
 
-def parse_ysi_response(response_str):
+def parse_ysi_response(response_bytes: bytes):
     """ Response format is something like "$49.9\r\n$ACK\r\n" for 49.9
     """
-    return float(response_str[1 : -len(YSI_RESPONSE_TERMINATOR)])
+    if not response_bytes.endswith(_YSI_RESPONSE_TERMINATOR):
+        raise InvalidYsiResponse(
+            f"{response_bytes} is missing the expected YSI response terminator {_YSI_RESPONSE_TERMINATOR}."
+        )
+
+    if not response_bytes.startswith(_YSI_RESPONSE_INITIATOR):
+        raise InvalidYsiResponse(
+            f"{response_bytes} is missing the expected YSI response initiator {_YSI_RESPONSE_INITIATOR}."
+        )
+
+    response_substr = response_bytes.decode("utf8")[
+        len(_YSI_RESPONSE_INITIATOR) : -len(_YSI_RESPONSE_TERMINATOR)
+    ]
+
+    try:
+        return float(response_substr)
+    except ValueError:
+        raise InvalidYsiResponse(
+            f'"{response_substr}" from within YSI response {response_bytes} could not be converted to a float'
+        )
 
 
 def get_sensor_reading(port: str, command: YSICommand) -> str:
@@ -43,12 +67,12 @@ def get_sensor_reading(port: str, command: YSICommand) -> str:
     response_bytes = send_serial_command_and_get_response(
         port=port,
         command=command.to_bytes_packet(),
-        response_terminator=YSI_RESPONSE_TERMINATOR,
-        baud_rate=YSI_BAUD_RATE,
+        response_terminator=_YSI_RESPONSE_TERMINATOR,
+        baud_rate=_YSI_BAUD_RATE,
         timeout=1,
     )
 
-    return parse_ysi_response(response_bytes.decode("utf8"))
+    return parse_ysi_response(response_bytes)
 
 
 def get_standard_sensor_values(port):
@@ -58,6 +82,7 @@ def get_standard_sensor_values(port):
             "Barometric pressure (mmHg)": get_sensor_reading(
                 port, YSICommand.get_barometric_pressure_mmhg
             ),
+            "DO (mg/L)": get_sensor_reading(port, YSICommand.get_do_mg_l),
             "DO (% sat)": get_sensor_reading(port, YSICommand.get_do_pct_sat),
             "Temperature (C)": get_sensor_reading(port, YSICommand.get_temp_c),
         }

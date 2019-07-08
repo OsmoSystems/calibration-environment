@@ -5,49 +5,37 @@ import pytest
 import calibration_environment.drivers.ysi as module
 
 
-def _replace_char(original_bytes, index_to_replace, replace_with):
-    """ Replace a single character in a byte string with another character
-    Very brittle. Only use with indices explicitly tested below. Known to be broken when index_to_replace=-1
-    """
-    if index_to_replace == -1:
-        raise ValueError("Read the docstring plz.")
-
-    return (
-        original_bytes[:index_to_replace]
-        + replace_with
-        + original_bytes[index_to_replace + 1 :]
-    )
-
-
-class TestReplaceChar:
-    @pytest.mark.parametrize(
-        "char_to_replace, expected_result",
-        [(0, b"62345"), (2, b"12645"), (-2, b"12365")],
-    )
-    def test_replaces_character(self, char_to_replace, expected_result):
-        assert _replace_char(b"12345", char_to_replace, b"6") == expected_result
-
-
 class TestParseYsiResponse:
-    valid_ysi_response = b"$49.9\r\n$ACK\r\n"
+    valid_number = b"49.9"
 
     def test_parses_valid_response(self):
-        assert module.parse_ysi_response(self.valid_ysi_response) == 49.9
+        valid_ysi_response = (
+            module._YSI_RESPONSE_INITIATOR
+            + self.valid_number
+            + module._YSI_RESPONSE_TERMINATOR
+        )
+        assert module.parse_ysi_response(valid_ysi_response) == 49.9
 
     @pytest.mark.parametrize(
         "name, invalid_ysi_response, expected_error_message_content",
         [
             (
                 "invalid terminator",
-                _replace_char(valid_ysi_response, -2, b"X"),
+                module._YSI_RESPONSE_INITIATOR + valid_number + b"get to da choppah",
                 "terminator",
             ),
             (
                 "invalid initiator",
-                _replace_char(valid_ysi_response, 0, b"X"),
+                b"ohai" + valid_number + module._YSI_RESPONSE_TERMINATOR,
                 "initiator",
             ),
-            ("invalid float", _replace_char(valid_ysi_response, 1, b"X"), "float"),
+            (
+                "invalid float",
+                module._YSI_RESPONSE_INITIATOR
+                + b"schwifty five"
+                + module._YSI_RESPONSE_TERMINATOR,
+                "float",
+            ),
             ("empty", b"", None),
             ("weird garbage", b"$$$\r\n$ACK\r\n\r\n$ACK\r\n", None),
         ],

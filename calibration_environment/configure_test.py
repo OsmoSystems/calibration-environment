@@ -21,8 +21,6 @@ class TestParseArgs(object):
             "COM2",
             "--collection-interval",
             "50",
-            "--wait-time",
-            "300",
         ]
 
         expected_args_out = {
@@ -32,13 +30,12 @@ class TestParseArgs(object):
             "gas_mixer_com_port": "COM1",
             "water_bath_com_port": "COM2",
             "collection_interval": 50,
-            "setpoint_wait_time": 300,
         }
 
         assert module._parse_args(args_in) == expected_args_out
 
     def test_shorthand_args_parsed_appropriately(self):
-        args_in = ["-s", "experiment.csv", "-o2", ".21", "--wait-time", "300"]
+        args_in = ["-s", "experiment.csv", "-o2", ".21"]
 
         expected_args_out = {
             "setpoint_sequence_csv_filepath": "experiment.csv",
@@ -47,7 +44,6 @@ class TestParseArgs(object):
             "gas_mixer_com_port": "COM22",
             "water_bath_com_port": "COM21",
             "collection_interval": 60,
-            "setpoint_wait_time": 300,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -74,7 +70,7 @@ class TestGetCalibrationConfiguration(object):
 
         start_date = datetime.now()
 
-        args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop", "--wait-time", "300"]
+        args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop"]
 
         expected_configuration = module.CalibrationConfiguration(
             setpoint_sequence_csv_filepath="experiment.csv",
@@ -84,7 +80,6 @@ class TestGetCalibrationConfiguration(object):
             loop=True,
             output_csv_filepath=sentinel.filepath,
             collection_interval=60,
-            setpoint_wait_time=300,
         )
 
         actual_configuration = module.get_calibration_configuration(args_in, start_date)

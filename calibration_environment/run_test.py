@@ -14,6 +14,7 @@ def mock_drivers(mocker):
 
     mocker.patch.object(module.water_bath, "send_command_and_parse_response")
     mocker.patch.object(module.water_bath, "initialize")
+    mocker.patch.object(module.water_bath, "send_settings_command_and_parse_response")
 
 
 @pytest.fixture
@@ -30,16 +31,18 @@ def test_csv_is_created(tmp_path, mocker, mock_drivers, mock_get_all_sensor_data
             "temperature": [15, 25],
             "flow_rate_slpm": [2.5, 2.5],
             "o2_target_gas_fraction": [50, 50],
+            "hold_time": [0.1, 0.1],
         }
     )
 
     expected_csv = pd.DataFrame(
         {
             "iteration": 0,
-            "setpoint temperature": [15, 25],
-            "setpoint flow rate": 2.5,
-            "setpoint target gas fraction": 50,
             "o2 source gas fraction": 0.21,
+            "setpoint flow rate": 2.5,
+            "setpoint hold time": 0.1,
+            "setpoint target gas fraction": 50.0,
+            "setpoint temperature": [15.0, 25.0],
             "stub data": 1,
         }
     )
@@ -54,11 +57,10 @@ def test_csv_is_created(tmp_path, mocker, mock_drivers, mock_get_all_sensor_data
         loop=False,
         output_csv_filepath=output_filepath,
         collection_interval=0.1,
-        setpoint_wait_time=0.1,
     )
 
     module.run([])
 
     output_csv = pd.read_csv(output_filepath).drop(columns=["timestamp"])
 
-    pd.testing.assert_frame_equal(output_csv, expected_csv, check_dtype=False)
+    pd.testing.assert_frame_equal(output_csv, expected_csv)

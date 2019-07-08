@@ -11,7 +11,7 @@ from .equilibrate import (
     wait_for_temperature_equilibration,
     wait_for_gas_mixer_equilibration,
 )
-from .configure import get_calibration_configuration
+from .configure import get_calibration_configuration, CalibrationConfiguration
 
 logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
 logging.basicConfig(
@@ -41,10 +41,10 @@ def get_all_sensor_data(com_ports):
 
 
 def collect_data_to_csv(
-    setpoint,
-    calibration_configuration,
-    sequence_iteration_count=0,
-    write_headers_to_file=True,
+    setpoint: pd.Series,
+    calibration_configuration: CalibrationConfiguration,
+    loop_count: int = 0,
+    write_headers_to_file: bool = True,
 ):
     """
         Read data from calibration environment sensors and write one row to
@@ -53,7 +53,7 @@ def collect_data_to_csv(
         Args:
             setpoint: A setpoint DataFrame row
             calibration_configuration: A CalibrationConfiguration object
-            sequence_iteration_count: The current iteration of looping over the setpoint sequence file. Int.
+            loop_count: The current iteration of looping over the setpoint sequence file.
             write_headers_to_file: Whether or not to write csv headers to output file.
     """
 
@@ -61,17 +61,20 @@ def collect_data_to_csv(
     sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
 
     row = pd.DataFrame(
-        {
-            # Use an array to coerce the df to use the dict keys as the index
-            "iteration": [sequence_iteration_count],
-            "setpoint temperature": setpoint["temperature"],
-            "setpoint flow rate": setpoint["flow_rate_slpm"],
-            "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
-            "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
-            "timestamp": datetime.now(),
-            **dict(sensor_data),
-        }
-    )
+        [
+            {
+                "iteration": loop_count,
+                "setpoint temperature": setpoint["temperature"],
+                "setpoint flow rate": setpoint["flow_rate_slpm"],
+                "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
+                "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
+                "timestamp": datetime.now(),
+                **dict(sensor_data),
+            }
+        ]
+    ).sort_index(
+        axis=1
+    )  # Sort the index so columns are always in the same order
 
     # Use mode="a" to append the row to the file
     row.to_csv(
@@ -100,7 +103,7 @@ def run(cli_args=None):
 
     water_bath.initialize(water_bath_com_port)
 
-    sequence_iteration_count = 0
+    loop_count = 0
     write_headers_to_file = True
 
     while True:
@@ -115,8 +118,6 @@ def run(cli_args=None):
             wait_for_temperature_equilibration(water_bath_com_port)
 
             # Set the gas mixer ratio
-            # TODO: Equilibration Procedure Software Implementation
-            # https://app.asana.com/0/1123279738062524/1128578386488633
             gas_mixer.start_constant_flow_mix(
                 gas_mixer_com_port,
                 setpoint["flow_rate_slpm"],
@@ -125,12 +126,12 @@ def run(cli_args=None):
             )
             wait_for_gas_mixer_equilibration(gas_mixer_com_port)
 
-            setpoint_equilibration_end_time = datetime.now() + timedelta(
-                seconds=calibration_configuration.setpoint_wait_time
+            setpoint_hold_end_time = datetime.now() + timedelta(
+                seconds=setpoint["hold_time"]
             )
             next_data_collection_time = datetime.now()
 
-            while datetime.now() < setpoint_equilibration_end_time:
+            while datetime.now() < setpoint_hold_end_time:
                 # Wait before collecting next datapoint
                 if datetime.now() < next_data_collection_time:
                     time.sleep(0.1)  # No need to totally peg the CPU
@@ -143,17 +144,29 @@ def run(cli_args=None):
                 collect_data_to_csv(
                     setpoint,
                     calibration_configuration,
-                    sequence_iteration_count=sequence_iteration_count,
+                    loop_count=loop_count,
                     write_headers_to_file=write_headers_to_file,
                 )
                 write_headers_to_file = False
 
         # Increment so we know which iteration we're on in the logs
-        sequence_iteration_count += 1
+        loop_count += 1
 
         if not calibration_configuration.loop:
             break
 
     gas_mixer.stop_flow(gas_mixer_com_port)
-    # TODO: https://app.asana.com/0/819671808102776/1128811014542923/f
-    # water_bath.shutdown(water_bath_com_port)
+    water_bath.send_settings_command_and_parse_response(
+        water_bath_com_port,
+        # unit_on_off = OFF, all other settings = NO_CHANGE
+        water_bath.OnOffArraySettings(
+            water_bath.OFF,
+            water_bath.NO_CHANGE,
+            water_bath.NO_CHANGE,
+            water_bath.NO_CHANGE,
+            water_bath.NO_CHANGE,
+            water_bath.NO_CHANGE,
+            water_bath.NO_CHANGE,
+            water_bath.NO_CHANGE,
+        ),
+    )

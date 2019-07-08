@@ -5,7 +5,10 @@ from enum import IntEnum
 from typing import Tuple, List
 
 import pandas as pd
-import serial
+
+from calibration_environment.drivers.serial_port import (
+    send_serial_command_and_get_response,
+)
 
 """ Controls & monitoring for Osmo's Alicat gas mixing system
 Assumptions:
@@ -23,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Default baud rate - this can be reconfigured
 _ALICAT_BAUD_RATE = 19200
-_ALICAT_SERIAL_LINE_ENDING = "\r"
+_ALICAT_SERIAL_TERMINATOR = b"\r"
 
 # The mixer we have is set to device ID "A"
 _DEVICE_ID = "A"
@@ -168,21 +171,17 @@ def send_serial_command_str_and_get_response(command_str: str, port: str) -> str
     """
 
     # Add the expected line ending and convert to bytes for serial transmission
-    command_bytes = bytes(f"{command_str}{_ALICAT_SERIAL_LINE_ENDING}", encoding="utf8")
+    command_bytes = bytes(f"{command_str}{_ALICAT_SERIAL_TERMINATOR}", encoding="utf8")
 
-    logger.debug(f"Serial command: {command_bytes}")
-
-    with serial.Serial(port, _ALICAT_BAUD_RATE, timeout=0.1) as connection:
-        connection.write(command_bytes)
-        return_value_with_line_ending = connection.read_until(
-            _ALICAT_SERIAL_LINE_ENDING
-        )
-
-    logger.debug(f"Serial response: {return_value_with_line_ending}")
-
-    return return_value_with_line_ending.decode("utf8").rstrip(
-        _ALICAT_SERIAL_LINE_ENDING
+    response_bytes = send_serial_command_and_get_response(
+        port=port,
+        command=command_bytes,
+        baud_rate=_ALICAT_BAUD_RATE,
+        response_terminator=_ALICAT_SERIAL_TERMINATOR,
+        timeout=0.1,
     )
+
+    return response_bytes.rstrip(_ALICAT_SERIAL_TERMINATOR).decode("utf8")
 
 
 def _has_low_feed_pressure(alarm_str: str) -> bool:

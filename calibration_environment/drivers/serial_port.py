@@ -25,7 +25,8 @@ def send_serial_command_and_get_response(
             If both response_terminator and max_response_bytes are provided,
                 either condition can terminate the response (whichever one happens first).
         baud_rate: baud rate for serial connection
-        timeout: timeout for serial connection. Default: 0.1
+        timeout: timeout for serial connection in seconds. Default: 0.1. If timeout elapses
+            while we're waiting for a response, we'll return whatever data we have.
 
     Returns:
         response byte string from the serial port

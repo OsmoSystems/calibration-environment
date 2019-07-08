@@ -32,12 +32,12 @@ def parse_ysi_response(response_bytes: bytes):
     """
     if not response_bytes.endswith(_YSI_RESPONSE_TERMINATOR):
         raise InvalidYsiResponse(
-            f"{response_bytes} is missing the expected YSI response terminator {_YSI_RESPONSE_TERMINATOR}."
+            f"{response_bytes} is missing the expected YSI response terminator {_YSI_RESPONSE_TERMINATOR}"
         )
 
     if not response_bytes.startswith(_YSI_RESPONSE_INITIATOR):
         raise InvalidYsiResponse(
-            f"{response_bytes} is missing the expected YSI response initiator {_YSI_RESPONSE_INITIATOR}."
+            f"{response_bytes} is missing the expected YSI response initiator {_YSI_RESPONSE_INITIATOR}"
         )
 
     response_substr = response_bytes.decode("utf8")[

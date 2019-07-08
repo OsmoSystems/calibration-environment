@@ -6,7 +6,9 @@ import calibration_environment.drivers.ysi as module
 
 
 def _replace_char(original_bytes, index_to_replace, replace_with):
-    """ Very brittle. Only use with indices explicitly tested below. Known to be broken when index_to_replace=-1"""
+    """ Replace a single character in a byte string with another character
+    Very brittle. Only use with indices explicitly tested below. Known to be broken when index_to_replace=-1
+    """
     if index_to_replace == -1:
         raise ValueError("Read the docstring plz.")
 

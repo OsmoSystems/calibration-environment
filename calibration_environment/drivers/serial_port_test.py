@@ -29,7 +29,10 @@ class TestSendSerialCommandAndGetResponse:
         )
 
         mock_serial_class.assert_called_with(
-            sentinel.port, baudrate=sentinel.baud_rate, timeout=sentinel.timeout
+            sentinel.port,
+            # "baudrate" (sic) - this is actually how it is in the pyserial API
+            baudrate=sentinel.baud_rate,
+            timeout=sentinel.timeout,
         )
         mock_connection.write.assert_called_with(sentinel.command)
 

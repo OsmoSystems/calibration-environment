@@ -64,8 +64,9 @@ def collect_data_to_csv(
         [
             {
                 "iteration": loop_count,
-                "setpoint temperature": setpoint["temperature"],
-                "setpoint flow rate": setpoint["flow_rate_slpm"],
+                "setpoint temperature (C)": setpoint["temperature"],
+                "setpoint hold time seconds": setpoint["hold_time"],
+                "setpoint flow rate slpm": setpoint["flow_rate_slpm"],
                 "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
                 "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
                 "timestamp": datetime.now(),

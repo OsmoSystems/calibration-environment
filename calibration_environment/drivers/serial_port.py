@@ -32,7 +32,8 @@ def send_serial_command_and_get_response(
         response byte string from the serial port
 
     Raises:
-        various exceptions raised by serial.Serial if serial port is not ready
+        serial.SerialException if serial port can't be opened
+        ValueError if parameters are out of range, e.g. baud rate etc.
     """
     logger.debug(f"Serial command on {port}: {command}")
 

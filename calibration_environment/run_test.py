@@ -28,7 +28,7 @@ def mock_get_calibration_configuration(mocker):
 
 
 @pytest.fixture
-def output_filepath(tmp_path):
+def mock_output_filepath(tmp_path):
     return tmp_path / "test.csv"
 
 
@@ -86,9 +86,9 @@ class TestCollectDataToCsv:
         collection_interval=0.1,
     )
 
-    def test_saves_csv_headers(self, output_filepath, mock_get_all_sensor_data):
+    def test_saves_csv_headers(self, mock_output_filepath, mock_get_all_sensor_data):
         test_configuration = self.default_configuration._replace(
-            output_csv_filepath=output_filepath
+            output_csv_filepath=mock_output_filepath
         )
 
         module.collect_data_to_csv(
@@ -99,11 +99,11 @@ class TestCollectDataToCsv:
         )
 
         # Use chunksize=1 to get a file reader that iterates over rows
-        output_csv = pd.read_csv(output_filepath, chunksize=1)
+        output_csv = pd.read_csv(mock_output_filepath, chunksize=1)
         first_row = output_csv.__next__()
 
         assert list(first_row) == [
-            "iteration",
+            "loop count",
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
@@ -112,9 +112,9 @@ class TestCollectDataToCsv:
             "timestamp",
         ]
 
-    def test_skips_saving_headers(self, output_filepath, mock_get_all_sensor_data):
+    def test_skips_saving_headers(self, mock_output_filepath, mock_get_all_sensor_data):
         test_configuration = self.default_configuration._replace(
-            output_csv_filepath=output_filepath
+            output_csv_filepath=mock_output_filepath
         )
 
         module.collect_data_to_csv(
@@ -125,11 +125,11 @@ class TestCollectDataToCsv:
         )
 
         # Use chunksize=1 to get a file reader that iterates over rows
-        output_csv = pd.read_csv(output_filepath, chunksize=1)
+        output_csv = pd.read_csv(mock_output_filepath, chunksize=1)
         first_row = output_csv.__next__()
 
         assert list(first_row) != [
-            "iteration",
+            "loop count",
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
@@ -138,7 +138,7 @@ class TestCollectDataToCsv:
             "timestamp",
         ]
 
-    def test_saves_expected_data(self, output_filepath, mock_get_all_sensor_data):
+    def test_saves_expected_data(self, mock_output_filepath, mock_get_all_sensor_data):
         test_setpoint = pd.Series(
             {
                 "temperature": 15,
@@ -148,7 +148,7 @@ class TestCollectDataToCsv:
             }
         )
         test_configuration = self.default_configuration._replace(
-            output_csv_filepath=output_filepath, o2_source_gas_fraction=0.23
+            output_csv_filepath=mock_output_filepath, o2_source_gas_fraction=0.23
         )
 
         mock_get_all_sensor_data.return_value = pd.Series(
@@ -162,7 +162,7 @@ class TestCollectDataToCsv:
         expected_csv = pd.DataFrame(
             [
                 {
-                    "iteration": 0,
+                    "loop count": 0,
                     "setpoint temperature (C)": 15.0,
                     "setpoint hold time seconds": 300.0,
                     "setpoint flow rate (SLPM)": 2.5,
@@ -175,7 +175,7 @@ class TestCollectDataToCsv:
             ]
         )
 
-        output_csv = pd.read_csv(output_filepath).drop(columns=["timestamp"])
+        output_csv = pd.read_csv(mock_output_filepath).drop(columns=["timestamp"])
 
         pd.testing.assert_frame_equal(expected_csv, output_csv)
 
@@ -203,7 +203,7 @@ class TestRunCalibration:
 
     def test_collects_data_at_configured_rate(
         self,
-        output_filepath,
+        mock_output_filepath,
         mock_drivers,
         mock_get_all_sensor_data,
         mock_get_calibration_configuration,
@@ -227,21 +227,21 @@ class TestRunCalibration:
         )
         test_configuration = self.default_configuration._replace(
             setpoints=setpoints,
-            output_csv_filepath=output_filepath,
+            output_csv_filepath=mock_output_filepath,
             collection_interval=data_collection_interval,
         )
         mock_get_calibration_configuration.return_value = test_configuration
 
         module.run([])
 
-        output_csv = pd.read_csv(output_filepath)
+        output_csv = pd.read_csv(mock_output_filepath)
 
         expected_output_rows = setpoint_hold_time // data_collection_interval
         assert len(output_csv) == expected_output_rows
 
     def test_correct_values_saved_to_csv(
         self,
-        output_filepath,
+        mock_output_filepath,
         mocker,
         mock_drivers,
         mock_get_all_sensor_data,
@@ -251,7 +251,7 @@ class TestRunCalibration:
         expected_csv = pd.DataFrame(
             [
                 {
-                    "iteration": 0,
+                    "loop count": 0,
                     "o2 source gas fraction": 0.21,
                     "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 0.1,
@@ -263,7 +263,7 @@ class TestRunCalibration:
         )
 
         test_configuration = self.default_configuration._replace(
-            output_csv_filepath=output_filepath
+            output_csv_filepath=mock_output_filepath
         )
         mock_get_calibration_configuration.return_value = test_configuration
         mock_get_all_sensor_data.return_value = pd.Series({"data": 1}).add_prefix(
@@ -272,6 +272,6 @@ class TestRunCalibration:
 
         module.run([])
 
-        output_csv = pd.read_csv(output_filepath).drop(columns=["timestamp"])
+        output_csv = pd.read_csv(mock_output_filepath).drop(columns=["timestamp"])
 
         pd.testing.assert_frame_equal(expected_csv, output_csv)

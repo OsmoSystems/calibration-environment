@@ -4,7 +4,38 @@
 
 Automation and data collection tools for the Osmo calibration environment
 
+# Installation
+Install the repo using `pip` to ensure dependencies are available and to create
+the shortcut command to run the automation program.
+
+```sh
+pip install git+ssh://git@github.com/osmosystems/calibration-environment.git@[CHANGESET]
+```
+
 # Usage
+
+Run the automation program using the command line entrypoint:
+```sh
+run_calibration --setpoint-sequence-filepath setpoints.csv --o2-source-fraction 0.21 --collection-interval 300
+```
+### Options
+
+| Command                      | Shorthand | Description                                                      |
+| ---------------------------- | --------- | ---------------------------------------------------------------- |
+| --setpoint-sequence-filepath | -s        | Setpoint sequence csv filepath                                   |
+| --o2-source-fraction         | -o2       | O2 fraction connected to MFC2                                    |
+| --loop                       |           | Loop through the setpoint sequence until it is stopped manually. Default when not present: run through setpoints exactly once |
+| --gas-mixer-port      |     | Override gas mixer COM port address. Default: COM22  |
+| --water-bath-port     |     | Override water bath COM port address. Default: COM21 |
+| --collection-interval |     | Time in seconds to wait between reading sensors      |
+
+### Setpoint CSV file schema
+| Heading                | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| temperature            | The desired setpoint temperature in degrees Celsius.                                           |
+| flow_rate_slpm         | The desired setpoint flow rate in Standard Liters Per Minute                                             |
+| o2_target_gas_fraction | The desired O2 fraction of the output gas mix.                                         |
+| hold_time              | The amount of time in seconds to hold at this setpoint for data collection. |
 
 ## Water bath
 
@@ -13,7 +44,7 @@ The water bath must be switched into serial communications mode by pushing the "
 
 Once the bath is in serial communications mode, it can no longer be controlled at all locally.
 
-Note from the [datasheet](https://drive.google.com/open?id=1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz) on how to override this: 
+Note from the [datasheet](https://drive.google.com/open?id=1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz) on how to override this:
 If the unit is shut down in the serial communication mode and you need to start the unit using the local controller, simultaneously depress and hold both arrow keys for approximately 10 seconds. The display will then show the internal probe temperature, and the alarm will sound. Press the Computer LED ["Serial" button] to turn off the LED and disable serial communications. Turn the controller off using ["I/O" button]. You can now start and operate the unit with the keypad.
 
 ### API
@@ -65,5 +96,3 @@ water_bath.send_settings_command_and_parse_response(
     settings=TURN_OFF_SERIAL,
 )
 ```
-
-

@@ -63,7 +63,7 @@ def collect_data_to_csv(
     row = pd.DataFrame(
         [
             {
-                "iteration": loop_count,
+                "loop count": loop_count,
                 "setpoint temperature (C)": setpoint["temperature"],
                 "setpoint hold time seconds": setpoint["hold_time"],
                 "setpoint flow rate (SLPM)": setpoint["flow_rate_slpm"],

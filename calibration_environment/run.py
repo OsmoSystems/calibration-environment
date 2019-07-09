@@ -66,7 +66,7 @@ def collect_data_to_csv(
                 "iteration": loop_count,
                 "setpoint temperature (C)": setpoint["temperature"],
                 "setpoint hold time seconds": setpoint["hold_time"],
-                "setpoint flow rate slpm": setpoint["flow_rate_slpm"],
+                "setpoint flow rate (SLPM)": setpoint["flow_rate_slpm"],
                 "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
                 "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
                 "timestamp": datetime.now(),
@@ -159,7 +159,7 @@ def run(cli_args=None):
     gas_mixer.stop_flow(gas_mixer_com_port)
     water_bath.send_settings_command_and_parse_response(
         water_bath_com_port,
-        # unit_on_off = OFF, all other settings = NO_CHANGE
+        # unit_on_off = OFF, serial_comm_enable = water_bath.OFF, all other settings = NO_CHANGE
         water_bath.OnOffArraySettings(
             water_bath.OFF,
             water_bath.NO_CHANGE,
@@ -168,6 +168,6 @@ def run(cli_args=None):
             water_bath.NO_CHANGE,
             water_bath.NO_CHANGE,
             water_bath.NO_CHANGE,
-            water_bath.NO_CHANGE,
+            serial_comm_enable=water_bath.OFF,
         ),
     )

@@ -51,7 +51,10 @@ def _parse_args(args: List[str]) -> Dict:
         required=False,
         action="store_true",
         default=False,
-        help="loop through the setpoint sequence until it is stopped manually",
+        help=(
+            "loop through the setpoint sequence until it is stopped manually. "
+            "Default: run through setpoints exactly once"
+        ),
     )
 
     arg_parser.add_argument(
@@ -59,7 +62,7 @@ def _parse_args(args: List[str]) -> Dict:
         dest="gas_mixer_com_port",
         required=False,
         default=DEFAULT_GAS_MIXER_COM_PORT,
-        help=f"override gas mixer COM port address, defaults to {DEFAULT_GAS_MIXER_COM_PORT}",
+        help=f"override gas mixer COM port address. Default: {DEFAULT_GAS_MIXER_COM_PORT}",
     )
 
     arg_parser.add_argument(
@@ -67,7 +70,7 @@ def _parse_args(args: List[str]) -> Dict:
         dest="water_bath_com_port",
         required=False,
         default=DEFAULT_WATER_BATH_COM_PORT,
-        help=f"overrider water bath COM port address, defaults to {DEFAULT_WATER_BATH_COM_PORT}",
+        help=f"override water bath COM port address. Default: {DEFAULT_WATER_BATH_COM_PORT}",
     )
 
     arg_parser.add_argument(
@@ -81,7 +84,7 @@ def _parse_args(args: List[str]) -> Dict:
     return vars(calibration_arg_namespace)
 
 
-def _open_setpoint_sequence_file(sequence_csv_filepath):
+def _read_setpoint_sequence_file(sequence_csv_filepath):
     sequences = pd.read_csv(sequence_csv_filepath)
 
     return sequences
@@ -111,7 +114,7 @@ def get_calibration_configuration(
 
     calibration_configuration = CalibrationConfiguration(
         setpoint_sequence_csv_filepath=args["setpoint_sequence_csv_filepath"],
-        setpoints=_open_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"]),
+        setpoints=_read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"]),
         com_ports=com_ports,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],

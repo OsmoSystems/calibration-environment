@@ -60,9 +60,9 @@ class TestParseArgs(object):
 
 
 class TestGetCalibrationConfiguration(object):
-    def test_all_configuration_options_returned(self, mocker):
+    def test_returns_all_configuration_options(self, mocker):
         mocker.patch.object(
-            module, "_open_setpoint_sequence_file"
+            module, "_read_setpoint_sequence_file"
         ).return_value = sentinel.setpoints
         mocker.patch.object(
             module, "_get_output_filename"

@@ -86,7 +86,7 @@ class TestCollectDataToCsv:
         collection_interval=0.1,
     )
 
-    def test_csv_headers_saved(self, output_filepath, mock_get_all_sensor_data):
+    def test_saves_csv_headers(self, output_filepath, mock_get_all_sensor_data):
         test_configuration = self.default_configuration._replace(
             output_csv_filepath=output_filepath
         )
@@ -98,19 +98,19 @@ class TestCollectDataToCsv:
             write_headers_to_file=True,
         )
 
-        output_csv = pd.read_csv(output_filepath)
+        # Use chunksize=1 to get a file reader that iterates over rows
+        output_csv = pd.read_csv(output_filepath, chunksize=1)
+        first_row = output_csv.__next__()
 
-        assert output_csv.columns.all(
-            [
-                "iteration",
-                "setpoint temperature (C)",
-                "setpoint hold time seconds",
-                "setpoint flow rate slpm",
-                "setpoint target gas fraction",
-                "o2 source gas fraction",
-                "timestamp",
-            ]
-        )
+        assert list(first_row) == [
+            "iteration",
+            "o2 source gas fraction",
+            "setpoint flow rate (SLPM)",
+            "setpoint hold time seconds",
+            "setpoint target gas fraction",
+            "setpoint temperature (C)",
+            "timestamp",
+        ]
 
     def test_skips_saving_headers(self, output_filepath, mock_get_all_sensor_data):
         test_configuration = self.default_configuration._replace(
@@ -124,21 +124,19 @@ class TestCollectDataToCsv:
             write_headers_to_file=False,
         )
 
-        output_csv = pd.read_csv(output_filepath)
+        # Use chunksize=1 to get a file reader that iterates over rows
+        output_csv = pd.read_csv(output_filepath, chunksize=1)
+        first_row = output_csv.__next__()
 
-        output_headers_in_expected_columns_names = output_csv.columns.isin(
-            [
-                "iteration",
-                "setpoint temperature (C)",
-                "setpoint hold time seconds",
-                "setpoint flow rate slpm",
-                "setpoint target gas fraction",
-                "o2 source gas fraction",
-                "timestamp",
-            ]
-        )
-
-        assert not output_headers_in_expected_columns_names.any()
+        assert list(first_row) != [
+            "iteration",
+            "o2 source gas fraction",
+            "setpoint flow rate (SLPM)",
+            "setpoint hold time seconds",
+            "setpoint target gas fraction",
+            "setpoint temperature (C)",
+            "timestamp",
+        ]
 
     def test_saves_expected_data(self, output_filepath, mock_get_all_sensor_data):
         test_setpoint = pd.Series(
@@ -167,7 +165,7 @@ class TestCollectDataToCsv:
                     "iteration": 0,
                     "setpoint temperature (C)": 15.0,
                     "setpoint hold time seconds": 300.0,
-                    "setpoint flow rate slpm": 2.5,
+                    "setpoint flow rate (SLPM)": 2.5,
                     "setpoint target gas fraction": 0.2,
                     "o2 source gas fraction": 0.23,
                     "value 0": 0,
@@ -255,7 +253,7 @@ class TestRunCalibration:
                 {
                     "iteration": 0,
                     "o2 source gas fraction": 0.21,
-                    "setpoint flow rate slpm": 2.5,
+                    "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 0.1,
                     "setpoint target gas fraction": 50.0,
                     "setpoint temperature (C)": 15.0,

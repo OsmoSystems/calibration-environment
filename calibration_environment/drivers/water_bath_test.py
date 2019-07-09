@@ -322,14 +322,7 @@ class TestCheckForErrorResponse:
 
 @pytest.fixture
 def mock_serial_and_response(mocker):
-    mock_read = Mock()
-    mock_serial_port = Mock(read=mock_read)
-    mock_serial = mocker.patch.object(module.serial, "Serial")
-
-    # Mock context manager using __enter__
-    mock_serial.return_value.__enter__.return_value = mock_serial_port
-
-    return mock_read
+    return mocker.patch.object(module, "send_serial_command_and_get_response")
 
 
 class TestSendCommand:

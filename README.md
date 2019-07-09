@@ -18,16 +18,8 @@ Run the automation program using the command line entrypoint:
 ```sh
 run_calibration --setpoint-sequence-filepath setpoints.csv --o2-source-fraction 0.21 --collection-interval 300
 ```
-### Options
 
-| Command                      | Shorthand | Description                                                      |
-| ---------------------------- | --------- | ---------------------------------------------------------------- |
-| --setpoint-sequence-filepath | -s        | Setpoint sequence csv filepath                                   |
-| --o2-source-fraction         | -o2       | O2 fraction connected to MFC2                                    |
-| --loop                       |           | Loop through the setpoint sequence until it is stopped manually. Default when not present: run through setpoints exactly once |
-| --gas-mixer-port      |     | Override gas mixer COM port address. Default: COM22  |
-| --water-bath-port     |     | Override water bath COM port address. Default: COM21 |
-| --collection-interval |     | Time in seconds to wait between reading sensors      |
+Use `run_calibration --help` for a full list of options.
 
 ### Setpoint CSV file schema
 | Heading                | Description                                                                 |

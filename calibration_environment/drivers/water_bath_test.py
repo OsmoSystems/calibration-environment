@@ -248,7 +248,7 @@ class TestParseSettingsDataBytes:
 class TestValidateSettings:
     default_initialization_settings = module.OnOffArraySettings(
         unit_on_off=True,
-        external_sensor_enable=True,
+        external_sensor_enable=False,
         faults_enabled=None,
         mute=None,
         auto_restart=None,
@@ -264,7 +264,7 @@ class TestValidateSettings:
         "setting, incorrect_value",
         [
             ("unit_on_off", False),
-            ("external_sensor_enable", False),
+            ("external_sensor_enable", True),
             ("high_precision_enable", False),
             ("serial_comm_enable", False),
         ],

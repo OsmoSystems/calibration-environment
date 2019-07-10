@@ -413,7 +413,7 @@ def _parse_settings_data_bytes(settings_data_bytes: bytes) -> OnOffArraySettings
 def _validate_initialized_settings(settings: OnOffArraySettings):
     checks = {
         "Water bath isn't turned on": settings.unit_on_off,
-        "External sensor isn't enabled": settings.external_sensor_enable,
+        "Internal sensor isn't enabled": not settings.external_sensor_enable,
         f"Precision isn't {REPORTING_PRECISION}": (
             settings.high_precision_enable == ENABLE_HIGH_PRECISION
         ),
@@ -496,7 +496,7 @@ def initialize(port: str) -> OnOffArraySettings:
         # Turn it on...
         unit_on_off=True,
         # Use internal temperature sensor
-        external_sensor_enable=True,
+        external_sensor_enable=False,
         # Assert high precision
         high_precision_enable=ENABLE_HIGH_PRECISION,
         # Control bath using serial communications

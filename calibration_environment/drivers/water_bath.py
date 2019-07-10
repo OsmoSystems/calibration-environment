@@ -45,8 +45,9 @@ DEFAULT_PREFIX = 0xCA
 DEFAULT_DEVICE_ADDRESS_MSB = 0x00
 DEFAULT_DEVICE_ADDRESS_LSB = 0x01
 
-# The bath can report data with either 0.1 or 0.01 precision
+# The bath can report data with either 0.1 or 0.01 precision. We want the high precision option
 REPORTING_PRECISION = 0.01
+ENABLE_HIGH_PRECISION = {0.01: True, 0.1: False}[REPORTING_PRECISION]
 
 # Default protocol settings on the NESLAB RTE. They can be reconfigured.
 DEFAULT_BAUD_RATE = 19200
@@ -377,46 +378,29 @@ def send_command_and_parse_response(
     return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
 
 
-OFF = 0
-ON = 1
-NO_CHANGE = 2  # Don't change the current bath setting
-
 OnOffArraySettings = collections.namedtuple(
     "OnOffArraySettings",
     [
-        "unit_on_off",  # Turn unit on/off. ON: Turn it on. OFF: Turn it off
-        "external_sensor_enable",  # ON: Use external sensor. OFF: Use internal sensor
-        "faults_enabled",  # Behavior when faults encountered. ON: Shut down. OFF: Continue to run.
+        # Each of these can be True (enable), False (disable) or None (don't change)
+        "unit_on_off",  # Turn unit on/off. True: Turn it on. False: Turn it off
+        "external_sensor_enable",  # True: Use external sensor. False: Use internal sensor
+        "faults_enabled",  # Behavior when faults encountered. True: Shut down. False: Continue to run.
         "mute",
         "auto_restart",
-        "high_precision_enable",  # Use 0.01 C precision. ON: Use 0.01 C. OFF: Use 0.1 C.
+        "high_precision_enable",  # Use 0.01 C precision. True: Use 0.01 C. False: Use 0.1 C.
         "full_range_cool_enable",
-        "serial_comm_enable",  # Serial communication. ON: Use serial communication. OFF: use local
+        "serial_comm_enable",  # Serial communication. True: Use serial communication. False: use local
     ],
-)
-
-
-# Ensure that the precision we tell the water bath to use matches the precision we use
-# to send data
-ENABLE_HIGH_PRECISION = {0.01: ON, 0.1: OFF}[REPORTING_PRECISION]
-
-DEFAULT_INITIALIZATION_SETTINGS = OnOffArraySettings(
-    unit_on_off=ON,  # Turn on unit
-    external_sensor_enable=ON,  # Use external sensor
-    faults_enabled=NO_CHANGE,
-    mute=NO_CHANGE,
-    auto_restart=NO_CHANGE,
-    high_precision_enable=ENABLE_HIGH_PRECISION,
-    full_range_cool_enable=NO_CHANGE,
-    serial_comm_enable=ON,  # Control bath using serial communications
 )
 
 
 def _construct_settings_command_packet(settings: OnOffArraySettings) -> SerialPacket:
     """ Construct a command packet to set on/off settings to desired, hardcoded values
     """
+    logical_setting_to_command_byte = {False: 0, True: 1, None: 2}
+    data_bytes = bytes(logical_setting_to_command_byte[setting] for setting in settings)
     return SerialPacket.from_command(
-        command=SET_ON_OFF_ARRAY_COMMAND, data_bytes=bytes(settings)
+        command=SET_ON_OFF_ARRAY_COMMAND, data_bytes=data_bytes
     )
 
 
@@ -428,12 +412,12 @@ def _parse_settings_data_bytes(settings_data_bytes: bytes) -> OnOffArraySettings
 
 def _validate_initialized_settings(settings: OnOffArraySettings):
     checks = {
-        "Water bath isn't turned on": settings.unit_on_off == ON,
-        "External sensor isn't enabled": settings.external_sensor_enable == ON,
+        "Water bath isn't turned on": settings.unit_on_off,
+        "External sensor isn't enabled": settings.external_sensor_enable,
         f"Precision isn't {REPORTING_PRECISION}": (
             settings.high_precision_enable == ENABLE_HIGH_PRECISION
         ),
-        "Serial comms aren't enabled": settings.serial_comm_enable == ON,
+        "Serial comms aren't enabled": settings.serial_comm_enable,
     }
 
     errors = [error_message for error_message, check in checks.items() if not check]
@@ -442,7 +426,15 @@ def _validate_initialized_settings(settings: OnOffArraySettings):
 
 
 def send_settings_command_and_parse_response(
-    port: str, settings: OnOffArraySettings
+    port: str,
+    unit_on_off: bool = None,
+    external_sensor_enable: bool = None,
+    faults_enabled: bool = None,
+    mute: bool = None,
+    auto_restart: bool = None,
+    high_precision_enable: bool = None,
+    full_range_cool_enable: bool = None,
+    serial_comm_enable: bool = None,
 ) -> OnOffArraySettings:
     """ Send a settings command to the water bath and parse the response data.
 
@@ -460,19 +452,32 @@ def send_settings_command_and_parse_response(
             d7 = full range cool enable
             d8 = serial comm enable
 
-        We use an OnOffArraySettings namedtuple to capture each of these settings
-
-        e.g. to just turn on the bath and change nothing else:
-            bytes: CA 00 01 81 08 01 02 02 02 02 02 02 02 66
-            OnOffArraySettings(1, 2, 2, 2, 2, 2, 2, 2)
-
         Args:
             port: The comm port used by the water bath
-            settings: An OnOffArraySettings tuple containing the desired settings
+            unit_on_off: if provided, Turn unit on (True) or off (False)
+            external_sensor_enable: if provided, determine whether the internal (False) or external (True) probe is
+                used for temperature feedback
+            faults_enabled: if provided, set behavior when faults encountered. True: shut down. False: continue to run.
+            mute: if provided, mute audible alarms (True) or unmute (False)
+            auto_restart: if provided, control auto restart setting
+            high_precision_enable: if provided, set control precision. True: Use 0.01 C. False: Use 0.1 C.
+            full_range_cool_enable: if provided, enable (True) / disable (False) full range cooling
+            serial_comm_enable: if provided, set serial communications status.
+                True: Use serial communication. False: use local (buttons)
 
         Returns:
             The response from the water bath as an OnOffArraySettings tuple
         """
+    settings = OnOffArraySettings(
+        unit_on_off=unit_on_off,
+        external_sensor_enable=external_sensor_enable,
+        faults_enabled=faults_enabled,
+        mute=mute,
+        auto_restart=auto_restart,
+        high_precision_enable=high_precision_enable,
+        full_range_cool_enable=full_range_cool_enable,
+        serial_comm_enable=serial_comm_enable,
+    )
     settings_command_packet = _construct_settings_command_packet(settings)
     response_packet = _send_command(port, settings_command_packet)
 
@@ -487,7 +492,15 @@ def initialize(port: str) -> OnOffArraySettings:
             port: The comm port used by the water bath
     """
     response_settings = send_settings_command_and_parse_response(
-        port, DEFAULT_INITIALIZATION_SETTINGS
+        port,
+        # Turn it on...
+        unit_on_off=True,
+        # Use internal temperature sensor
+        external_sensor_enable=True,
+        # Assert high precision
+        high_precision_enable=ENABLE_HIGH_PRECISION,
+        # Control bath using serial communications
+        serial_comm_enable=True,
     )
 
     _validate_initialized_settings(response_settings)

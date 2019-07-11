@@ -171,7 +171,7 @@ def send_serial_command_str_and_get_response(command_str: str, port: str) -> str
     """
 
     # Add the expected line ending and convert to bytes for serial transmission
-    command_bytes = bytes(f"{command_str}{_ALICAT_SERIAL_TERMINATOR}", encoding="utf8")
+    command_bytes = bytes(command_str, encoding="utf8") + _ALICAT_SERIAL_TERMINATOR
 
     response_bytes = send_serial_command_and_get_response(
         port=port,

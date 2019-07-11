@@ -23,6 +23,37 @@ class TestMixControllerStateCode:
         assert str(self.EMO_CODE) == self.EXPECTED_EMO_STRING
 
 
+class TestSendSerialCommandStrAndGetResponse:
+    def test_calls_with_appropriate_line_ending_and_conversion(self, mocker):
+        mock_serial_sender = mocker.patch.object(
+            module, "send_serial_command_and_get_response"
+        )
+
+        command_str = "test command"
+        expected_command_bytes = b"test command\r"
+        module.send_serial_command_str_and_get_response(command_str, sentinel.port)
+
+        mock_serial_sender.assert_called_with(
+            port=sentinel.port,
+            command=expected_command_bytes,
+            baud_rate=module._ALICAT_BAUD_RATE,
+            response_terminator=module._ALICAT_SERIAL_TERMINATOR,
+            timeout=0.1,
+        )
+
+    def test_strips_terminator_from_response(self, mocker):
+        response_bytes = b"response\r"
+        expected_cleaned_response = "response"
+        mocker.patch.object(
+            module, "send_serial_command_and_get_response", return_value=response_bytes
+        )
+
+        actual_cleaned_response = module.send_serial_command_str_and_get_response(
+            "command", sentinel.port
+        )
+        assert actual_cleaned_response == expected_cleaned_response
+
+
 @pytest.mark.parametrize(
     "alarm_str, expected",
     [("2199552", True), ("0", False), ("4096", False), (str(0x008000), True)],

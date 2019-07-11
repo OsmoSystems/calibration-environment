@@ -8,7 +8,7 @@ from calibration_environment.drivers.serial_port import (
 A driver for the Thermo Scientific NESLAB RTE 17 Temperature-controlled water bath
 
 Excerpts from the datasheet:
-(https://drive.google.com/open?id=1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz)
+(https://drive.google.com/file/d/1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz?disco=AAAADMVYeIw)
 
 All data is sent and received in binary form, do not use ASCII. In the following
 pages the binary data is represented in hexadecimal (hex) format.

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Default baud rate - this can be reconfigured
 _ALICAT_BAUD_RATE = 19200
-_ALICAT_SERIAL_TERMINATOR = b"\r"
+_ALICAT_SERIAL_TERMINATOR_BYTE = b"\r"
 
 # The mixer we have is set to device ID "A"
 _DEVICE_ID = "A"
@@ -158,7 +158,7 @@ def _assert_mixer_state(
         )
 
 
-def send_serial_command_str_and_get_response(command_str: str, port: str) -> str:
+def send_serial_command_str_and_parse_response(command_str: str, port: str) -> str:
     """ Given a serial command, send it on a serial port and return the response.
     Handles Alicat default serial settings and line endings.
 
@@ -171,17 +171,17 @@ def send_serial_command_str_and_get_response(command_str: str, port: str) -> str
     """
 
     # Add the expected line ending and convert to bytes for serial transmission
-    command_bytes = bytes(f"{command_str}{_ALICAT_SERIAL_TERMINATOR}", encoding="utf8")
+    command_bytes = bytes(command_str, encoding="utf8") + _ALICAT_SERIAL_TERMINATOR_BYTE
 
     response_bytes = send_serial_command_and_get_response(
         port=port,
         command=command_bytes,
         baud_rate=_ALICAT_BAUD_RATE,
-        response_terminator=_ALICAT_SERIAL_TERMINATOR,
+        response_terminator=_ALICAT_SERIAL_TERMINATOR_BYTE,
         timeout=0.1,
     )
 
-    return response_bytes.rstrip(_ALICAT_SERIAL_TERMINATOR).decode("utf8")
+    return response_bytes.rstrip(_ALICAT_SERIAL_TERMINATOR_BYTE).decode("utf8")
 
 
 def _has_low_feed_pressure(alarm_str: str) -> bool:
@@ -269,7 +269,7 @@ def _send_sequence_with_expected_responses(
     """ Send a sequence of serial commands, checking that each response is exactly what is expected
     """
     for command, expected_response in command_strs_and_expected_responses:
-        response = send_serial_command_str_and_get_response(command, port)
+        response = send_serial_command_str_and_parse_response(command, port)
         if response != expected_response:
             raise UnexpectedMixerResponse(
                 f'Expected mixer response to "{command}" was "{expected_response}" but we got "{response}"'
@@ -300,7 +300,7 @@ def get_mixer_status(port: str) -> pd.Series:
     """
     # mnemonic: QMXS = "query mixer status"
     command = f"{_DEVICE_ID} QMXS"
-    response = send_serial_command_str_and_get_response(command, port)
+    response = send_serial_command_str_and_parse_response(command, port)
 
     if not response:
         raise UnexpectedMixerResponse(
@@ -334,7 +334,7 @@ def get_gas_ids(port: str) -> pd.Series:
     """
     # mnemonic: "MXFG" = "mixer feed gases"
     command = f"{_DEVICE_ID} MXFG"
-    response = send_serial_command_str_and_get_response(command, port)
+    response = send_serial_command_str_and_parse_response(command, port)
 
     if not response:
         raise UnexpectedMixerResponse(
@@ -464,5 +464,5 @@ def stop_flow(port: str) -> None:
     """
     # mnemonic: "MXRS" = "mixer run state"
     command = f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.stop_flow.value}"
-    response = send_serial_command_str_and_get_response(command, port)
+    response = send_serial_command_str_and_parse_response(command, port)
     _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)

@@ -19,6 +19,8 @@ class TestParseArgs(object):
             "COM1",
             "--water-bath-port",
             "COM2",
+            "--ysi-port",
+            "COM3",
             "--collection-interval",
             "50",
         ]
@@ -29,6 +31,7 @@ class TestParseArgs(object):
             "loop": True,
             "gas_mixer_com_port": "COM1",
             "water_bath_com_port": "COM2",
+            "ysi_com_port": "COM3",
             "collection_interval": 50,
         }
 
@@ -43,6 +46,7 @@ class TestParseArgs(object):
             "loop": False,
             "gas_mixer_com_port": "COM22",
             "water_bath_com_port": "COM21",
+            "ysi_com_port": "COM11",
             "collection_interval": 60,
         }
 
@@ -75,7 +79,7 @@ class TestGetCalibrationConfiguration(object):
         expected_configuration = module.CalibrationConfiguration(
             setpoint_sequence_csv_filepath="experiment.csv",
             setpoints=sentinel.setpoints,
-            com_ports={"gas_mixer": "COM22", "water_bath": "COM21"},
+            com_ports={"gas_mixer": "COM22", "water_bath": "COM21", "ysi": "COM11"},
             o2_source_gas_fraction=0.21,
             loop=True,
             output_csv_filepath=sentinel.filepath,

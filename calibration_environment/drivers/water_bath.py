@@ -405,8 +405,8 @@ OnOffArraySettings = collections.namedtuple(
 def _construct_settings_command_packet(settings: OnOffArraySettings) -> SerialPacket:
     """ Construct a command packet to set on/off settings to desired, hardcoded values
     """
-    logical_setting_to_command_byte = {False: 0, True: 1, None: 2}
-    data_bytes = bytes(logical_setting_to_command_byte[setting] for setting in settings)
+    setting_to_command_byte = {False: 0, True: 1, None: 2}
+    data_bytes = bytes(setting_to_command_byte[setting] for setting in settings)
     return SerialPacket.from_command(
         command=SET_ON_OFF_ARRAY_COMMAND, data_bytes=data_bytes
     )
@@ -461,8 +461,8 @@ def send_settings_command_and_parse_response(
             d8 = serial comm enable
 
         Args:
-            port: The comm port used by the water bath
-            unit_on_off: if provided, Turn unit on (True) or off (False)
+            port: the comm port used by the water bath
+            unit_on_off: if provided, turn unit on (True) or off (False)
             external_sensor_enable: if provided, determine whether the internal (False) or external (True) probe is
                 used for temperature feedback
             faults_enabled: if provided, set behavior when faults encountered. True: shut down. False: continue to run.

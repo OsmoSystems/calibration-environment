@@ -10,7 +10,7 @@ import calibration_environment.drivers.gas_mixer as module
 
 @pytest.fixture
 def mock_send_serial_command_and_get_response(mocker):
-    return mocker.patch.object(module, "send_serial_command_str_and_get_response")
+    return mocker.patch.object(module, "send_serial_command_str_and_parse_response")
 
 
 class TestMixControllerStateCode:
@@ -31,13 +31,13 @@ class TestSendSerialCommandStrAndGetResponse:
 
         command_str = "test command"
         expected_command_bytes = b"test command\r"
-        module.send_serial_command_str_and_get_response(command_str, sentinel.port)
+        module.send_serial_command_str_and_parse_response(command_str, sentinel.port)
 
         mock_serial_sender.assert_called_with(
             port=sentinel.port,
             command=expected_command_bytes,
             baud_rate=module._ALICAT_BAUD_RATE,
-            response_terminator=module._ALICAT_SERIAL_TERMINATOR,
+            response_terminator=module._ALICAT_SERIAL_TERMINATOR_BYTE,
             timeout=0.1,
         )
 
@@ -48,7 +48,7 @@ class TestSendSerialCommandStrAndGetResponse:
             module, "send_serial_command_and_get_response", return_value=response_bytes
         )
 
-        actual_cleaned_response = module.send_serial_command_str_and_get_response(
+        actual_cleaned_response = module.send_serial_command_str_and_parse_response(
             "command", sentinel.port
         )
         assert actual_cleaned_response == expected_cleaned_response

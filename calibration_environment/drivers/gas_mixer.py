@@ -192,7 +192,7 @@ def _has_low_feed_pressure(alarm_str: str) -> bool:
 
 def _ppb_to_fraction(ppb_value: int) -> float:
     """ Convert a parts per billion as a string (coming from MFC) to a fraction """
-    return int(ppb_value) / _ONE_BILLION
+    return ppb_value / _ONE_BILLION
 
 
 def _fraction_to_ppb(fraction: float) -> int:

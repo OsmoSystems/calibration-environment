@@ -155,9 +155,15 @@ class SerialPacket:
 
         self.validate()
 
+    def _bytes_as_hex_str(self):
+        return " ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
+
     def __str__(self):
-        bytes_as_hex = " ".join((f"0x{byte:02X}" for byte in self.to_bytes()))
-        return f"bytes: {bytes_as_hex}, attributes: {str(self.__dict__)}"
+        return f"bytes: {self._bytes_as_hex_str()}, attributes: {str(self.__dict__)}"
+
+    def __repr__(self):
+        repr_without_closing_bracket = object.__repr__(self).rstrip(">")
+        return f"{repr_without_closing_bracket} bytes: {self._bytes_as_hex_str()}>"
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -499,8 +505,6 @@ def initialize(port: str) -> OnOffArraySettings:
         external_sensor_enable=False,
         # Assert high precision
         high_precision_enable=ENABLE_HIGH_PRECISION,
-        # Control bath using serial communications
-        serial_comm_enable=True,
     )
 
     _validate_initialized_settings(response_settings)

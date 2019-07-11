@@ -229,11 +229,10 @@ class TestConstructSettingsCommandPacket:
         expected_packet = module.SerialPacket(
             command=0x81,
             data_bytes_count=0x08,
-            data_bytes=b"\x01\x01\x01\x00\x00\x00\x02\x02",
+            data_bytes=b"\x01\x01\x01\x00\x00\x00\x03\x02",
             **PREFIX_AND_ADDR_DEFAULTS,
         )
-        print(actual_packet._checksum)
-        print(actual_packet.data_bytes)
+
         assert actual_packet == expected_packet
 
 

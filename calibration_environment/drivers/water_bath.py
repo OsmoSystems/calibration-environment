@@ -507,6 +507,7 @@ def initialize(port: str) -> OnOffArraySettings:
         high_precision_enable=ENABLE_HIGH_PRECISION,
         # Note: we'd like to make sure that serial communications are enabled,
         # but they have to be enabled already or else this won't work :p
+        serial_comm_enable=None,
     )
 
     _validate_initialized_settings(response_settings)

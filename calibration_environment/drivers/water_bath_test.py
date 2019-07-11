@@ -170,7 +170,7 @@ class TestSerialPacket:
         # hexlify to make error message more readable
         assert hexlify(packet.to_bytes()) == hexlify(packet_bytes)
 
-    def test_repr(self):
+    def test_str(self):
         packet = module.SerialPacket(
             prefix=0xCA,
             device_address_msb=0x00,
@@ -182,6 +182,19 @@ class TestSerialPacket:
         )
 
         assert "0xCA 0x00 0x01 0x20 0x03 0x11 0x02 0x71 0x57" in str(packet)
+
+    def test_repr(self):
+        packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x20,
+            data_bytes_count=0x03,
+            data_bytes=b"\x11\x02\x71",
+            checksum=0x57,
+        )
+
+        assert "0xCA 0x00 0x01 0x20 0x03 0x11 0x02 0x71 0x57" in repr(packet)
 
 
 class TestConstructCommandPacket:
@@ -214,15 +227,25 @@ class TestConstructCommandPacket:
 
 class TestConstructSettingsCommandPacket:
     def test_construct_settings_command_packet(self):
-        settings = module.DEFAULT_INITIALIZATION_SETTINGS
+        settings = module.OnOffArraySettings(
+            # Three Trues, three Falses and two Nones
+            unit_on_off=True,
+            external_sensor_enable=True,
+            faults_enabled=True,
+            mute=False,
+            auto_restart=False,
+            high_precision_enable=False,
+            full_range_cool_enable=None,
+            serial_comm_enable=None,
+        )
         actual_packet = module._construct_settings_command_packet(settings)
         expected_packet = module.SerialPacket(
             command=0x81,
             data_bytes_count=0x08,
-            data_bytes=b"\x01\x01\x02\x02\x02\x01\x02\x01",
+            data_bytes=b"\x01\x01\x01\x00\x00\x00\x02\x02",
             **PREFIX_AND_ADDR_DEFAULTS,
         )
-        print(actual_packet._checksum)
+
         assert actual_packet == expected_packet
 
 
@@ -235,21 +258,32 @@ class TestParseSettingsDataBytes:
 
 
 class TestValidateSettings:
+    default_initialization_settings = module.OnOffArraySettings(
+        unit_on_off=True,
+        external_sensor_enable=False,
+        faults_enabled=None,
+        mute=None,
+        auto_restart=None,
+        high_precision_enable=True,
+        full_range_cool_enable=None,
+        serial_comm_enable=True,
+    )
+
     def test_validate_initialization_settings_does_not_raise_if_correct(self):
-        module._validate_initialized_settings(module.DEFAULT_INITIALIZATION_SETTINGS)
+        module._validate_initialized_settings(self.default_initialization_settings)
 
     @pytest.mark.parametrize(
         "setting, incorrect_value",
         [
-            ("unit_on_off", module.OFF),
-            ("external_sensor_enable", module.OFF),
-            ("high_precision_enable", module.OFF),
-            ("serial_comm_enable", module.OFF),
+            ("unit_on_off", False),
+            ("external_sensor_enable", True),
+            ("high_precision_enable", False),
+            ("serial_comm_enable", False),
         ],
     )
     def test_validate_initialization_settings_raises(self, setting, incorrect_value):
         with pytest.raises(ValueError):
-            settings_with_one_error = module.DEFAULT_INITIALIZATION_SETTINGS._asdict()
+            settings_with_one_error = self.default_initialization_settings._asdict()
             settings_with_one_error[setting] = incorrect_value
 
             module._validate_initialized_settings(
@@ -259,10 +293,10 @@ class TestValidateSettings:
     def test_validate_initialization_settings_raises_on_multiple_errors(self):
         with pytest.raises(ValueError):
             settings_with_multiple_errors = (
-                module.DEFAULT_INITIALIZATION_SETTINGS._asdict()
+                self.default_initialization_settings._asdict()
             )
-            settings_with_multiple_errors["external_sensor_enable"] = module.OFF
-            settings_with_multiple_errors["serial_comm_enable"] = module.OFF
+            settings_with_multiple_errors["external_sensor_enable"] = False
+            settings_with_multiple_errors["serial_comm_enable"] = False
 
             module._validate_initialized_settings(
                 module.OnOffArraySettings(**settings_with_multiple_errors)

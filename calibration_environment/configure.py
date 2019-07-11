@@ -8,6 +8,7 @@ import pandas as pd
 
 DEFAULT_GAS_MIXER_COM_PORT = "COM22"
 DEFAULT_WATER_BATH_COM_PORT = "COM21"
+DEFAULT_YSI_COM_PORT = "COM11"
 
 CalibrationConfiguration = namedtuple(
     "CalibrationConfiguration",
@@ -74,6 +75,14 @@ def _parse_args(args: List[str]) -> Dict:
     )
 
     arg_parser.add_argument(
+        "--ysi-port",
+        dest="ysi_com_port",
+        required=False,
+        default=DEFAULT_YSI_COM_PORT,
+        help=f"override YSI COM port address. Default: {DEFAULT_YSI_COM_PORT}",
+    )
+
+    arg_parser.add_argument(
         "--collection-interval",
         default=60,
         type=int,
@@ -110,6 +119,7 @@ def get_calibration_configuration(
     com_ports = {
         "gas_mixer": args["gas_mixer_com_port"],
         "water_bath": args["water_bath_com_port"],
+        "ysi": args["ysi_com_port"],
     }
 
     calibration_configuration = CalibrationConfiguration(

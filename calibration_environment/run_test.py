@@ -45,6 +45,13 @@ class TestGetAllSensorData:
         mock_send_command_and_parse_response = mocker.patch.object(
             module.water_bath, "send_command_and_parse_response"
         )
+
+        mocker.patch.object(
+            module.ysi,
+            "get_standard_sensor_values",
+            return_value=pd.Series({"DO or something": 0, "temperature (C)": 1}),
+        )
+
         # Return values for "Read Internal Temperature" and
         # "Read External Sensor", respectively
         mock_send_command_and_parse_response.side_effect = [15, 16]
@@ -57,11 +64,13 @@ class TestGetAllSensorData:
                 "O2 gas ID": 1,
                 "water bath internal temperature (C)": 15,
                 "water bath external sensor temperature (C)": 16,
+                "YSI DO or something": 0,
+                "YSI temperature (C)": 1,
             }
         )
 
         output_sensor_data = module.get_all_sensor_data(
-            {"gas_mixer": "port 1", "water_bath": "port 2"}
+            {"gas_mixer": "port 1", "water_bath": "port 2", "ysi": "port 3"}
         )
 
         pd.testing.assert_series_equal(expected_sensor_data, output_sensor_data)

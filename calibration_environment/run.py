@@ -7,6 +7,7 @@ import pandas as pd
 
 from .drivers import gas_mixer
 from .drivers import water_bath
+from .drivers import ysi
 from .equilibrate import (
     wait_for_temperature_equilibration,
     wait_for_gas_mixer_equilibration,
@@ -37,7 +38,9 @@ def get_all_sensor_data(com_ports):
         }
     ).add_prefix("water bath ")
 
-    return pd.concat([gas_mixer_status, gas_ids, water_bath_status])
+    ysi_status = ysi.get_standard_sensor_values(com_ports["ysi"]).add_prefix("YSI ")
+
+    return pd.concat([gas_mixer_status, gas_ids, water_bath_status, ysi_status])
 
 
 def collect_data_to_csv(

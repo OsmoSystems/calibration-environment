@@ -163,7 +163,7 @@ class SerialPacket:
 
     def __repr__(self):
         repr_without_closing_bracket = object.__repr__(self).rstrip(">")
-        return f"{repr_without_closing_bracket} bytes: {self._bytes_as_hex_str()}>"
+        return f"{repr_without_closing_bracket}. bytes: {self._bytes_as_hex_str()}>"
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

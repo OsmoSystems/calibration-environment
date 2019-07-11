@@ -170,7 +170,7 @@ class TestSerialPacket:
         # hexlify to make error message more readable
         assert hexlify(packet.to_bytes()) == hexlify(packet_bytes)
 
-    def test_repr(self):
+    def test_str(self):
         packet = module.SerialPacket(
             prefix=0xCA,
             device_address_msb=0x00,
@@ -182,6 +182,19 @@ class TestSerialPacket:
         )
 
         assert "0xCA 0x00 0x01 0x20 0x03 0x11 0x02 0x71 0x57" in str(packet)
+
+    def test_repr(self):
+        packet = module.SerialPacket(
+            prefix=0xCA,
+            device_address_msb=0x00,
+            device_address_lsb=0x01,
+            command=0x20,
+            data_bytes_count=0x03,
+            data_bytes=b"\x11\x02\x71",
+            checksum=0x57,
+        )
+
+        assert "0xCA 0x00 0x01 0x20 0x03 0x11 0x02 0x71 0x57" in repr(packet)
 
 
 class TestConstructCommandPacket:

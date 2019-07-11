@@ -162,6 +162,8 @@ class SerialPacket:
         return f"bytes: {self._bytes_as_hex_str()}, attributes: {str(self.__dict__)}"
 
     def __repr__(self):
+        # object.__repr__() produces something like <Foo object at 0x12425>. We want to keep that information in our
+        # final result (including the ID - so just start with object repr and strip off the right-side bracket
         repr_without_closing_bracket = object.__repr__(self).rstrip(">")
         return f"{repr_without_closing_bracket}. bytes: {self._bytes_as_hex_str()}>"
 

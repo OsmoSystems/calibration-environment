@@ -161,16 +161,5 @@ def run(cli_args=None):
 
     gas_mixer.stop_flow(gas_mixer_com_port)
     water_bath.send_settings_command_and_parse_response(
-        water_bath_com_port,
-        # unit_on_off = OFF, serial_comm_enable = water_bath.OFF, all other settings = NO_CHANGE
-        water_bath.OnOffArraySettings(
-            water_bath.OFF,
-            water_bath.NO_CHANGE,
-            water_bath.NO_CHANGE,
-            water_bath.NO_CHANGE,
-            water_bath.NO_CHANGE,
-            water_bath.NO_CHANGE,
-            water_bath.NO_CHANGE,
-            serial_comm_enable=water_bath.OFF,
-        ),
+        water_bath_com_port, unit_on_off=False
     )

@@ -131,7 +131,7 @@ def run(cli_args=None):
             wait_for_gas_mixer_equilibration(gas_mixer_com_port)
 
             setpoint_hold_end_time = datetime.now() + timedelta(
-                seconds=setpoint["hold_time"]
+                seconds=float(setpoint["hold_time"])
             )
             next_data_collection_time = datetime.now()
 

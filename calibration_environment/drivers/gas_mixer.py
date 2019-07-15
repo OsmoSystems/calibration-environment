@@ -352,39 +352,39 @@ def get_gas_ids(port: str) -> pd.Series:
     return _parse_gas_ids(response)
 
 
-def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> None:
-    """ Check that a given mix is possible on our mixer, raising ValueError if not.
-    Raises:
-        ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
+def get_mix_validation_errors(
+    total_flow_rate_slpm: float,
+    o2_source_gas_o2_fraction: float,
+    target_gas_o2_fraction: float,
+) -> pd.Series:
+    """ Validate that a given mix is possible on our mixer.
+    Args:
+        total_flow_rate_slpm: Target flow rate in SLPM.
+        o2_source_gas_o2_fraction: O2 fraction of O2 source gas.
+        target_gas_o2_fraction: Desired output gas O2 fraction.
+    Returns:
+        Pandas series with boolean flags indicating errors in this mix.
     """
-    o2_source_gas_target = flow_rate_slpm * o2_source_gas_fraction
-    n2_target = flow_rate_slpm - o2_source_gas_target
-
-    invalid_mix_message = (
-        f"Invalid mix requested: flow rate {flow_rate_slpm} SLPM, "
-        f"O2 source gas fraction {o2_source_gas_fraction}. "
+    o2_source_gas_target = (
+        total_flow_rate_slpm * target_gas_o2_fraction / o2_source_gas_o2_fraction
     )
+    n2_target = total_flow_rate_slpm - o2_source_gas_target
 
-    o2_source_gas_error = (
-        (
-            "O2 source gas mixer only goes up to "
-            f"{_O2_SOURCE_GAS_MAX_FLOW} but {o2_source_gas_target} is required for desired mix. "
-        )
-        if o2_source_gas_target > _O2_SOURCE_GAS_MAX_FLOW
-        else ""
+    return pd.Series(
+        # Disable black to make long boolean expressions more readable
+        # fmt: off
+        {
+            "target gas O2 fraction too high":
+                target_gas_o2_fraction > o2_source_gas_o2_fraction,
+            "O2 flow rate too high": o2_source_gas_target > _O2_SOURCE_GAS_MAX_FLOW,
+            "O2 flow rate too low":
+                o2_source_gas_target < _O2_SOURCE_GAS_MAX_FLOW * 0.01
+                and o2_source_gas_target != 0,
+            "N2 flow rate too high": n2_target > _N2_MAX_FLOW,
+            "N2 flow rate too low": n2_target < _N2_MAX_FLOW * 0.01 and n2_target != 0,
+        }
+        # fmt: on
     )
-
-    n2_error = (
-        (
-            f"N2 source gas mixer only goes up to "
-            f"{_N2_MAX_FLOW} but {n2_target} is required for desired mix. "
-        )
-        if n2_target > _N2_MAX_FLOW
-        else ""
-    )
-
-    if o2_source_gas_error or n2_error:
-        raise ValueError(f"{invalid_mix_message}{o2_source_gas_error}{n2_error}")
 
 
 def _get_o2_source_gas_fraction(target_o2_fraction, o2_source_gas_o2_fraction):
@@ -441,7 +441,16 @@ def start_constant_flow_mix(
         UnexpectedMixerResponse if any mixer response is unexpected. There are currently no known causes for this.
         ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
     """
-    _assert_valid_mix(target_flow_rate_slpm, o2_source_gas_o2_fraction)
+    validation_errors = get_mix_validation_errors(
+        target_flow_rate_slpm, o2_source_gas_o2_fraction, target_o2_fraction
+    )
+    if validation_errors.any():
+        raise ValueError(
+            (
+                f"Invalid flow mix: {target_o2_fraction} parts O2 at {target_flow_rate_slpm}SLPM "
+                f"with {o2_source_gas_o2_fraction} source O2 fraction"
+            )
+        )
     n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(
         o2_source_gas_o2_fraction, target_o2_fraction
     )

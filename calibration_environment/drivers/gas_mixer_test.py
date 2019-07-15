@@ -314,17 +314,31 @@ class TestAssertMixerState:
 
 class TestAssertValidMix:
     @pytest.mark.parametrize(
-        "flow_rate_slpm, o2_source_gas_fraction, should_raise",
-        [(5, 0.1, False), (99, 99, True)],
+        "flow_rate_slpm, target_o2_fraction, o2_source_gas_fraction, expected_errors",
+        [
+            (2.5, 0.21, 0.21, []),
+            (5, 0, 0.1, []),
+            (5, 0.5, 1, []),
+            (2.5, 0.42, 0.21, ["target gas O2 fraction too high"]),
+            (5, 0.21, 0.21, ["O2 flow rate too high"]),
+            (15, 0.21, 0.7, ["O2 flow rate too high", "N2 flow rate too high"]),
+            (15, 0.0, 0.21, ["N2 flow rate too high"]),
+            (2.5, 0.001, 0.21, ["O2 flow rate too low"]),
+            (2.5, 0.209, 0.21, ["N2 flow rate too low"]),
+        ],
     )
     def test_raises_appropriately(
-        self, flow_rate_slpm, o2_source_gas_fraction, should_raise
+        self,
+        flow_rate_slpm,
+        target_o2_fraction,
+        o2_source_gas_fraction,
+        expected_errors,
     ):
-        if should_raise:
-            with pytest.raises(ValueError, match="mixer only goes up to"):
-                module._assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
-        else:
-            module._assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
+        mix_validation_errors = module.get_mix_validation_errors(
+            flow_rate_slpm, o2_source_gas_fraction, target_o2_fraction
+        )
+
+        assert mix_validation_errors[expected_errors].all()
 
 
 class TestStartConstantFlowMix:

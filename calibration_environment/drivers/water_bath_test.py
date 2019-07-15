@@ -389,3 +389,22 @@ class TestSendCommand:
 
         with pytest.raises(module.ErrorResponse):
             module._send_command(sentinel.port, mock_command_packet)
+
+
+class TestGetTemperatureValidationErrors:
+    @pytest.mark.parametrize(
+        "temperature, expected_error",
+        [
+            (module._LOW_TEMPERATURE_LIMIT - 1, "temperature too low"),
+            (module._HIGH_TEMPERATURE_LIMIT + 1, "temperature too high"),
+            (30, None),
+        ],
+    )
+    def test_returns_expected_validation_errors(self, temperature, expected_error):
+        validation_errors = module.get_temperature_validation_errors(temperature)
+
+        if expected_error:
+            assert validation_errors[expected_error]
+            assert not validation_errors.all()
+        else:
+            assert not validation_errors.any()

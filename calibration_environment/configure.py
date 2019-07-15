@@ -6,6 +6,9 @@ from typing import List, Dict
 
 import pandas as pd
 
+from .drivers.gas_mixer import get_mix_validation_errors
+from .drivers.water_bath import get_temperature_validation_errors
+
 DEFAULT_GAS_MIXER_COM_PORT = "COM22"
 DEFAULT_WATER_BATH_COM_PORT = "COM21"
 DEFAULT_YSI_COM_PORT = "COM11"
@@ -93,10 +96,32 @@ def _parse_args(args: List[str]) -> Dict:
     return vars(calibration_arg_namespace)
 
 
-def _read_setpoint_sequence_file(sequence_csv_filepath):
-    sequences = pd.read_csv(sequence_csv_filepath)
+def _get_setpoint_validation_errors(setpoint, o2_source_gas_fraction):
+    return pd.concat(
+        [
+            get_mix_validation_errors(
+                setpoint["flow_rate_slpm"],
+                o2_source_gas_fraction,
+                setpoint["o2_target_gas_fraction"],
+            ),
+            get_temperature_validation_errors(setpoint["temperature"]),
+        ]
+    )
 
-    return sequences
+
+def validate_setpoints(setpoints, o2_source_gas_fraction):
+    setpoint_errors = setpoints.apply(
+        _get_setpoint_validation_errors, axis=1, args=(o2_source_gas_fraction,)
+    )
+
+    rows_with_errors = setpoint_errors.sum(axis=1) > 0
+
+    return setpoint_errors[rows_with_errors]
+
+
+def _read_setpoint_sequence_file(sequence_csv_filepath):
+    setpoints = pd.read_csv(sequence_csv_filepath)
+    return setpoints
 
 
 # Copy pasta from run experiment
@@ -116,6 +141,12 @@ def get_calibration_configuration(
 ) -> CalibrationConfiguration:
     args = _parse_args(cli_args)
 
+    setpoints = _read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"])
+
+    setpoint_errors = validate_setpoints(setpoints, args["o2_source_gas_fraction"])
+    if len(setpoint_errors) > 0:
+        raise ValueError(f"Invalid setpoints detected:\n{setpoint_errors}")
+
     com_ports = {
         "gas_mixer": args["gas_mixer_com_port"],
         "water_bath": args["water_bath_com_port"],
@@ -124,7 +155,7 @@ def get_calibration_configuration(
 
     calibration_configuration = CalibrationConfiguration(
         setpoint_sequence_csv_filepath=args["setpoint_sequence_csv_filepath"],
-        setpoints=_read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"]),
+        setpoints=setpoints,
         com_ports=com_ports,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],

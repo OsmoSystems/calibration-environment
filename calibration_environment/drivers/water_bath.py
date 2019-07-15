@@ -1,5 +1,7 @@
 import collections
 
+import pandas as pd
+
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
 )
@@ -92,6 +94,11 @@ _QUALIFIER_HEX_TO_PRECISION = {
     0x11: 0.1,  # Units: degrees C
     0x21: 0.01,  # Units: degrees C
 }
+
+# The water bath can operate at -24C to 150C
+# so use the range at which water is liquid.
+_LOW_TEMPERATURE_LIMIT = 0
+_HIGH_TEMPERATURE_LIMIT = 100
 
 
 class InvalidResponse(ValueError):
@@ -266,6 +273,21 @@ def _validate_precision_matches(precision, expected_precision):
             f"the precision we're using to send data ({expected_precision})."
             f"\nRun initialize() to set the bath to use our desired precision."
         )
+
+
+def get_temperature_validation_errors(target_temperature: float) -> pd.Series:
+    """ Validate that a given temperature is attainable by the water bath.
+    Args:
+        target_temperature: The desired setpoint temperature in C
+    Returns:
+        Pandas series with boolean flags indicating errors with this temperature.
+    """
+    return pd.Series(
+        {
+            "temperature too low": target_temperature < _LOW_TEMPERATURE_LIMIT,
+            "temperature too high": target_temperature > _HIGH_TEMPERATURE_LIMIT,
+        }
+    )
 
 
 def _parse_data_bytes_as_float(

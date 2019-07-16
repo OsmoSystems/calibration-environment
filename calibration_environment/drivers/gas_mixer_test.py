@@ -314,28 +314,38 @@ class TestAssertMixerState:
 
 class TestAssertValidMix:
     @pytest.mark.parametrize(
-        "flow_rate_slpm, target_o2_fraction, o2_source_gas_fraction, expected_errors",
+        "target_flow_rate_slpm, target_o2_fraction, expected_errors",
         [
-            (2.5, 0.21, 0.21, []),
-            (5, 0, 0.1, []),
-            (5, 0.5, 1, []),
-            (2.5, 0.42, 0.21, ["target gas O2 fraction too high"]),
-            (5, 0.21, 0.21, ["O2 flow rate too high"]),
-            (15, 0.21, 0.7, ["O2 flow rate too high", "N2 flow rate too high"]),
-            (15, 0.0, 0.21, ["N2 flow rate too high"]),
-            (2.5, 0.001, 0.21, ["O2 flow rate too low"]),
-            (2.5, 0.209, 0.21, ["N2 flow rate too low"]),
+            # Flow rates with O2 source gas fraction of 1:
+            #   O2 = target_flow_rate_slpm * target_o2_fraction
+            #   N2 = target_flow_rate_slpm - O2 flow rate
+            # O2 2.5, N2 0
+            (2.5, 1, []),
+            # O2 0, N2 2.5
+            (2.5, 0, []),
+            # O2 1.25, N2 1.25
+            (2.5, 0.5, []),
+            # O2 5, N2 -2.5
+            (2.5, 2, ["target gas O2 fraction too high"]),
+            # O2 2.6, N2 0
+            (2.6, 1, ["O2 flow rate too high"]),
+            # O2 11, N2 11
+            (22, 0.5, ["O2 flow rate too high", "N2 flow rate too high"]),
+            # O2 0, N2 11
+            (11, 0, ["N2 flow rate too high"]),
+            # O2 0.001, N2 0.999
+            (1, 0.001, ["O2 flow rate too low"]),
+            # O2 0.999, N2 0.001
+            (1, 0.999, ["N2 flow rate too low"]),
         ],
     )
-    def test_raises_appropriately(
-        self,
-        flow_rate_slpm,
-        target_o2_fraction,
-        o2_source_gas_fraction,
-        expected_errors,
+    def test_flags_expected_validation_errors(
+        self, target_flow_rate_slpm, target_o2_fraction, expected_errors
     ):
+        o2_source_gas_fraction = 1
+
         mix_validation_errors = module.get_mix_validation_errors(
-            flow_rate_slpm, o2_source_gas_fraction, target_o2_fraction
+            target_flow_rate_slpm, o2_source_gas_fraction, target_o2_fraction
         )
 
         assert mix_validation_errors[expected_errors].all()

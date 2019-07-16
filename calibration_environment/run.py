@@ -130,7 +130,7 @@ def run(cli_args=None):
             )
             wait_for_gas_mixer_equilibration(gas_mixer_com_port)
 
-            # use pd.Timedelta here for type safety
+            # use pd.Timedelta here for type safety (handles numpy ints)
             setpoint_hold_end_time = datetime.now() + pd.Timedelta(
                 seconds=setpoint["hold_time"]
             )

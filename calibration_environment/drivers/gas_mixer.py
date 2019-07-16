@@ -190,14 +190,22 @@ def _has_low_feed_pressure(alarm_str: str) -> bool:
     return bool(int(alarm_str) & _LOW_FEED_PRESSURE_ALARM_BIT)
 
 
-def _ppb_to_fraction(ppb_str: str) -> float:
+def _ppb_to_fraction(ppb_value: int) -> float:
     """ Convert a parts per billion as a string (coming from MFC) to a fraction """
-    return int(ppb_str) / _ONE_BILLION
+    return ppb_value / _ONE_BILLION
 
 
-def _fraction_to_ppb_str(fraction: float) -> str:
+def _fraction_to_ppb(fraction: float) -> int:
     """ Convert a fraction to a parts per billion number suitable for sending over serial """
-    return str(int(fraction * _ONE_BILLION))
+    return int(fraction * _ONE_BILLION)
+
+
+def _complimentary_ppb_value(ppb_value: int) -> int:
+    """ Get the complimentary parts-per-billion value that with this ppb value, adds up to one billion.
+    The gas mixer cares that ppb fractions add up to exactly one billion
+    So, use this instead of converting numbers to ppb individually.
+    """
+    return _ONE_BILLION - int(ppb_value)
 
 
 def _parse_flow_fraction(mfc_str: str) -> float:
@@ -207,7 +215,7 @@ def _parse_flow_fraction(mfc_str: str) -> float:
     """
     if all(character == "-" for character in mfc_str):
         return 0
-    return _ppb_to_fraction(mfc_str)
+    return _ppb_to_fraction(int(mfc_str))
 
 
 def _assert_expected_units(mixer_status_response: MixerStatusResponse) -> None:
@@ -388,6 +396,27 @@ def _get_o2_source_gas_fraction(target_o2_fraction, o2_source_gas_o2_fraction):
     return target_o2_fraction / o2_source_gas_o2_fraction
 
 
+def _get_source_gas_flow_rates_ppb(
+    o2_source_gas_o2_fraction: float, target_o2_fraction: float
+) -> Tuple[int, int]:
+    """ Calculate how much of each source gas, in ppb, is required to hit a target O2 fraction
+
+    Args:
+        o2_source_gas_o2_fraction: Fraction of O2 in the source gas connected to mixer 2. Defaults to 1.
+        target_flow_rate_slpm: target flow rate, in SLPM
+        target_o2_fraction: fraction of O2 in the desired mix
+
+    Returns:
+        n2_ppb, o2_source_gas_ppb: tuple of integer PPM values
+    """
+    target_o2_source_gas_fraction = _get_o2_source_gas_fraction(
+        target_o2_fraction, o2_source_gas_o2_fraction
+    )
+    o2_source_gas_ppb = _fraction_to_ppb(target_o2_source_gas_fraction)
+    n2_ppb = _complimentary_ppb_value(o2_source_gas_ppb)
+    return n2_ppb, o2_source_gas_ppb
+
+
 def stop_flow(port: str) -> None:
     """ Stop flow on the gas mixer.
 
@@ -436,16 +465,11 @@ def start_constant_flow_mix(
         stop_flow(port)
         return
 
-    target_o2_source_gas_fraction = _get_o2_source_gas_fraction(
-        target_o2_fraction, o2_source_gas_o2_fraction
+    _assert_valid_mix(target_flow_rate_slpm, o2_source_gas_o2_fraction)
+    n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(
+        o2_source_gas_o2_fraction, target_o2_fraction
     )
-    n2_fraction = 1 - target_o2_source_gas_fraction
-    n2_ppb = _fraction_to_ppb_str(n2_fraction)
-    o2_source_gas_ppb = _fraction_to_ppb_str(target_o2_source_gas_fraction)
-    min_mfc_flow_rate = min(
-        _O2_SOURCE_GAS_MAX_FLOW, _N2_MAX_FLOW
-    )  # flow rate of our smallest MFC
-    _assert_valid_mix(target_flow_rate_slpm, target_o2_source_gas_fraction)
+    min_mfc_flow_rate = 2.5  # flow rate of our smallest MFC
 
     commands_and_expected_responses = [
         (  # Set mixer run mode to constant flow

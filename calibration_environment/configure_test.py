@@ -93,17 +93,17 @@ class TestGetCalibrationConfiguration:
         assert expected_configuration == actual_configuration
 
     def test_raises_on_invalid_setpoints(self, mocker):
-        test_setpoints = pd.DataFrame(
+        invalid_setpoint = pd.DataFrame(
             [
                 {
-                    "temperature": 101,
+                    "temperature": 101,  # Causes "temperature too high" error
                     "flow_rate_slpm": 2.5,
                     "o2_target_gas_fraction": 0.21,
                 }
             ]
         )
         mocker.patch.object(
-            module, "_read_setpoint_sequence_file", return_value=test_setpoints
+            module, "_read_setpoint_sequence_file", return_value=invalid_setpoint
         )
         mocker.patch.object(
             module, "_get_output_filename", return_value=sentinel.filepath
@@ -118,46 +118,44 @@ class TestGetCalibrationConfiguration:
 
 
 class TestValidateSetpoints:
-    @pytest.mark.parametrize(
-        "temperature, flow_rate_slpm, o2_target_gas_fraction, o2_source_gas_fraction, expected_errors",
-        [
-            (15, 2.5, 0.21, 0.21, []),
-            (15, 5, 0, 0.1, []),
-            (15, 5, 0.5, 1, []),
-            (-1, 2.5, 0.21, 0.21, ["temperature too low"]),
-            (101, 2.5, 0.21, 0.21, ["temperature too high"]),
-            (15, 2.5, 0.42, 0.21, ["target gas O2 fraction too high"]),
-            (15, 5, 0.21, 0.21, ["O2 flow rate too high"]),
-            (15, 15, 0.21, 0.7, ["O2 flow rate too high", "N2 flow rate too high"]),
-            (15, 15, 0.0, 0.21, ["N2 flow rate too high"]),
-            (15, 2.5, 0.001, 0.21, ["O2 flow rate too low"]),
-            (15, 2.5, 0.209, 0.21, ["N2 flow rate too low"]),
-        ],
-    )
-    def test_returns_invalid_setpoints(
-        self,
-        temperature,
-        flow_rate_slpm,
-        o2_target_gas_fraction,
-        o2_source_gas_fraction,
-        expected_errors,
-    ):
+    def test_returns_expected_column_names(self):
         setpoints = pd.DataFrame(
-            [
-                {
-                    "temperature": temperature,
-                    "flow_rate_slpm": flow_rate_slpm,
-                    "o2_target_gas_fraction": o2_target_gas_fraction,
-                }
-            ]
+            [{"temperature": 15, "flow_rate_slpm": 5, "o2_target_gas_fraction": 0.5}]
         )
+        o2_source_gas_fraction = 1
 
         invalid_setpoints = module.validate_setpoints(setpoints, o2_source_gas_fraction)
 
-        has_validation_errors = len(invalid_setpoints) > 0
-        expects_validation_errors = len(expected_errors) > 0
+        expected_column_names = set(
+            [
+                "temperature too low",
+                "temperature too high",
+                "target gas O2 fraction too high",
+                "O2 flow rate too high",
+                "O2 flow rate too low",
+                "N2 flow rate too high",
+                "N2 flow rate too low",
+            ]
+        )
+
+        assert set(invalid_setpoints.columns) == expected_column_names
+
+    def test_returns_invalid_setpoints(self):
+        # O2 flow rate = 22 * .5 = 11
+        # N2 flow rate = 22 - 11 = 11
+        setpoints = pd.DataFrame(
+            [{"temperature": 101, "flow_rate_slpm": 22, "o2_target_gas_fraction": 0.5}]
+        )
+        o2_source_gas_fraction = 1
+        expected_errors = [
+            "temperature too high",
+            "O2 flow rate too high",
+            "N2 flow rate too high",
+        ]
+
+        invalid_setpoints = module.validate_setpoints(setpoints, o2_source_gas_fraction)
 
         expected_error_columns = invalid_setpoints[expected_errors]
 
-        assert has_validation_errors == expects_validation_errors
+        assert len(invalid_setpoints) == 1
         assert expected_error_columns.all().all()

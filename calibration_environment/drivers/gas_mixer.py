@@ -80,6 +80,9 @@ _LOW_FEED_PRESSURE_ALARM_BIT = 0x008000
 
 _ONE_BILLION = 1000000000
 
+# We shouldn't run the MFCs lower than 1% of their full flow rate [insert reference here]
+MIN_FLOW_RATE_FRACTION = 0.01
+
 
 class _MixControllerStateCode(IntEnum):
     """ Codes returned by the mix controller in response to a mixer status (MXRS) command or query """
@@ -378,10 +381,12 @@ def get_mix_validation_errors(
                 target_gas_o2_fraction > o2_source_gas_o2_fraction,
             "O2 flow rate too high": o2_source_gas_target > _O2_SOURCE_GAS_MAX_FLOW,
             "O2 flow rate too low":
-                o2_source_gas_target < _O2_SOURCE_GAS_MAX_FLOW * 0.01
+                o2_source_gas_target < _O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION
                 and o2_source_gas_target != 0,
             "N2 flow rate too high": n2_target > _N2_MAX_FLOW,
-            "N2 flow rate too low": n2_target < _N2_MAX_FLOW * 0.01 and n2_target != 0,
+            "N2 flow rate too low":
+                n2_target < _N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION
+                and n2_target != 0,
         }
         # fmt: on
     )
@@ -447,7 +452,7 @@ def start_constant_flow_mix(
     if validation_errors.any():
         raise ValueError(
             (
-                f"Invalid flow mix: {target_o2_fraction} parts O2 at {target_flow_rate_slpm}SLPM "
+                f"Invalid flow mix: {target_o2_fraction} parts O2 at {target_flow_rate_slpm} SLPM "
                 f"with {o2_source_gas_o2_fraction} source O2 fraction"
             )
         )

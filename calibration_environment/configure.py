@@ -4,10 +4,7 @@ from collections import namedtuple
 
 from typing import List, Dict
 
-import pandas as pd
-
-from .drivers.gas_mixer import get_mix_validation_errors
-from .drivers.water_bath import get_temperature_validation_errors
+from .setpoints import read_setpoint_sequence_file, validate_setpoints
 
 DEFAULT_GAS_MIXER_COM_PORT = "COM22"
 DEFAULT_WATER_BATH_COM_PORT = "COM21"
@@ -96,34 +93,6 @@ def _parse_args(args: List[str]) -> Dict:
     return vars(calibration_arg_namespace)
 
 
-def _get_setpoint_validation_errors(setpoint, o2_source_gas_fraction):
-    return pd.concat(
-        [
-            get_mix_validation_errors(
-                setpoint["flow_rate_slpm"],
-                o2_source_gas_fraction,
-                setpoint["o2_target_gas_fraction"],
-            ),
-            get_temperature_validation_errors(setpoint["temperature"]),
-        ]
-    )
-
-
-def validate_setpoints(setpoints, o2_source_gas_fraction):
-    setpoint_errors = setpoints.apply(
-        _get_setpoint_validation_errors, axis=1, args=(o2_source_gas_fraction,)
-    )
-
-    rows_with_errors = setpoint_errors.sum(axis=1) > 0
-
-    return setpoint_errors[rows_with_errors]
-
-
-def _read_setpoint_sequence_file(sequence_csv_filepath):
-    setpoints = pd.read_csv(sequence_csv_filepath)
-    return setpoints
-
-
 # Copy pasta from run experiment
 def iso_datetime_for_filename(datetime_):
     """ Returns datetime as a ISO-ish format string that can be used in filenames (which can't inclue ":")
@@ -141,7 +110,7 @@ def get_calibration_configuration(
 ) -> CalibrationConfiguration:
     args = _parse_args(cli_args)
 
-    setpoints = _read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"])
+    setpoints = read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"])
 
     setpoint_errors = validate_setpoints(setpoints, args["o2_source_gas_fraction"])
     if len(setpoint_errors) > 0:

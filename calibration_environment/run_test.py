@@ -234,6 +234,7 @@ class TestRunCalibration:
                 }
             ]
         )
+
         test_configuration = self.default_configuration._replace(
             setpoints=setpoints,
             output_csv_filepath=mock_output_filepath,

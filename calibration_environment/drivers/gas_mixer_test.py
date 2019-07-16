@@ -373,6 +373,18 @@ class TestStartConstantFlowMix:
                 target_o2_fraction=0.5, o2_source_gas_o2_fraction=0.2
             )
 
+    def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
+        mock_stop_flow = mocker.patch.object(module, "stop_flow")
+
+        module.start_constant_flow_mix(
+            sentinel.port,
+            target_flow_rate_slpm=0,
+            target_o2_fraction=1,
+            o2_source_gas_o2_fraction=1,
+        )
+
+        mock_stop_flow.assert_called_once_with(sentinel.port)
+
     @pytest.mark.parametrize("target_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01])
     def test_get_source_gas_flow_rates_ppb_adds_to_one_billion(
         self, target_o2_fraction

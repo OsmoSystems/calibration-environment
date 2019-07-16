@@ -52,7 +52,7 @@ def _retry_giveup_handler(details):
     ),
     jitter=backoff.full_jitter,  # Prevents repeated collisions with other regularly-scheduled polling
     interval=0.5,
-    max_tries=10,  # Retry for up to 5 seconds
+    max_tries=10,
     on_backoff=_retry_handler,
     on_giveup=_retry_giveup_handler,
 )

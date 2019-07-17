@@ -21,10 +21,10 @@ class TestRetryOnException:
         tries = 0
 
         def unreliable_function(pass_through):
-            """ Raise an exception the first 11 times this is called and then pass """
+            """ Raise an exception the first 10 times this is called and then pass """
             nonlocal tries
             tries += 1
-            if tries < 11:
+            if tries < 10:
                 raise CustomException
             else:
                 return pass_through
@@ -32,6 +32,8 @@ class TestRetryOnException:
         # Meta-test: does the unreliable function actually raise?
         with pytest.raises(CustomException):
             unreliable_function(sentinel.happiness)
+
+        tries = 0  # we used one up just now; reset it
 
         decorator = module.retry_on_exception(CustomException, interval=0.1)
         wrapped_fn = decorator(unreliable_function)

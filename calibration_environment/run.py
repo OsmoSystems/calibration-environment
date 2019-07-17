@@ -114,6 +114,7 @@ def run(cli_args=None):
 
         for _, setpoint in calibration_configuration.setpoints.iterrows():
 
+            logging.info(f"Setting setpoint: {setpoint}")
             water_bath.send_command_and_parse_response(
                 water_bath_com_port,
                 command_name="Set Setpoint",

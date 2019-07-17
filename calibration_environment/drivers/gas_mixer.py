@@ -495,6 +495,12 @@ def start_constant_flow_mix(
             f"{_DEVICE_ID} MXRM {_MIXER_MODE_CODE_CONSTANT_FLOW}",
             f"A {_MIXER_MODE_CODE_CONSTANT_FLOW}",
         ),
+        (  # Initially set mix to 100% nitrogen to prevent edge case:
+            # extreme fractions such as almost-all nitrogen (99.1% from N2 MFC, 0.9% from O2 source gas)
+            # would prevent us from setting a low flow rate (2.5SLPM) in the next step
+            f"{_DEVICE_ID} MXMF {_ONE_BILLION} 0",
+            f"{_DEVICE_ID} {_ONE_BILLION} 0",
+        ),
         (  # Initially set flow rate to a small number to make sure the fraction goes through.
             f"{_DEVICE_ID} MXRFF {min_mfc_flow_rate:.2f}",
             f"{_DEVICE_ID} {min_mfc_flow_rate:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",

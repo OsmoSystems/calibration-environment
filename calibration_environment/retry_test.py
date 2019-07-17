@@ -41,7 +41,8 @@ class TestRetryOnException:
         def always_broken():
             raise CustomException
 
-        wrapped_fn = module.retry_on_exception(CustomException)(always_broken)
+        decorator = module.retry_on_exception(CustomException, interval=0.1)
+        wrapped_fn = decorator(always_broken)
 
         with pytest.raises(CustomException):
             wrapped_fn()

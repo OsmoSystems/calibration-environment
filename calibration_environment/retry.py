@@ -1,6 +1,5 @@
 import logging
 import traceback
-from typing import Tuple, Union
 
 import backoff
 
@@ -11,9 +10,7 @@ def _retry_handler(details):
     )
 
 
-def retry_on_exception(
-    expected_exception: Union[Exception, Tuple[Exception]], **backoff_kwargs
-):
+def retry_on_exception(expected_exception, **backoff_kwargs):
     """ When used as a decorator, when the wrapped function raises expected_exception, we'll retry
     We will retry up to 10 times with an interval and jitter designed to allow temporary issues with our instruments to
     go away. We'll also log the traceback and call details of any errors that happen.
@@ -25,7 +22,7 @@ def retry_on_exception(
     >>> def thing_that_might_raise_expected_error(foo): ...
 
     Args:
-        expected_exception: exception or tuple of exceptions
+        expected_exception: exception or tuple of exceptions to handle via retry
         **backoff_kwargs: Additional keyword arguments will be passed to `backoff.on_exception`.
 
     Returns:

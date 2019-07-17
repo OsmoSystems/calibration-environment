@@ -327,21 +327,6 @@ class TestAssertMixerState:
             module._assert_mixer_state(f"A {actual_code_number}", expected_code)
 
 
-class TestAssertValidMix:
-    @pytest.mark.parametrize(
-        "flow_rate_slpm, o2_source_gas_fraction, should_raise",
-        [(5, 0.1, False), (99, 99, True)],
-    )
-    def test_raises_appropriately(
-        self, flow_rate_slpm, o2_source_gas_fraction, should_raise
-    ):
-        if should_raise:
-            with pytest.raises(ValueError, match="mixer only goes up to"):
-                module._assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
-        else:
-            module._assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
-
-
 class TestStartConstantFlowMix:
     @pytest.mark.parametrize(
         "target_o2_fraction, o2_source_gas_o2_fraction, expected_o2_source_gas_fraction",

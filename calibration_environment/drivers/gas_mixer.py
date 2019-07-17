@@ -361,17 +361,23 @@ def get_gas_ids(port: str) -> pd.Series:
     return _parse_gas_ids(response)
 
 
-def _assert_valid_mix(flow_rate_slpm: float, o2_source_gas_fraction: float) -> None:
+def _assert_valid_mix(
+    total_flow_rate_slpm: float,
+    o2_source_gas_o2_fraction: float,
+    target_gas_o2_fraction: float,
+) -> None:
     """ Check that a given mix is possible on our mixer, raising ValueError if not.
     Raises:
         ValueError if the target flow rate and fraction are not achievable by the mixer configuration.
     """
-    o2_source_gas_target = flow_rate_slpm * o2_source_gas_fraction
-    n2_target = flow_rate_slpm - o2_source_gas_target
+    o2_source_gas_target = (
+        total_flow_rate_slpm * target_gas_o2_fraction / o2_source_gas_o2_fraction
+    )
+    n2_target = total_flow_rate_slpm - o2_source_gas_target
 
     invalid_mix_message = (
-        f"Invalid mix requested: flow rate {flow_rate_slpm} SLPM, "
-        f"O2 source gas fraction {o2_source_gas_fraction}. "
+        f"Invalid mix requested: flow rate {total_flow_rate_slpm} SLPM, "
+        f"O2 source gas fraction {target_gas_o2_fraction}. "
     )
 
     o2_source_gas_error = (
@@ -476,7 +482,9 @@ def start_constant_flow_mix(
         stop_flow(port)
         return
 
-    _assert_valid_mix(target_flow_rate_slpm, o2_source_gas_o2_fraction)
+    _assert_valid_mix(
+        target_flow_rate_slpm, o2_source_gas_o2_fraction, target_o2_fraction
+    )
     n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(
         o2_source_gas_o2_fraction, target_o2_fraction
     )

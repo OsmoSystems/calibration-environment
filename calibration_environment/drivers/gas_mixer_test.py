@@ -387,8 +387,6 @@ class TestStartConstantFlowMix:
             sentinel.port,
             [
                 ("A MXRM 3", "A 3"),
-                ("A MXMF 1000000000 0", "A 1000000000 0"),
-                ("A MXRFF 2.50", "A 2.50 7 SLPM"),
                 ("A MXMF 800000000 200000000", "A 800000000 200000000"),
                 ("A MXRFF 5.00", "A 5.00 7 SLPM"),
                 ("A MXRS 1", "A 2"),
@@ -412,8 +410,6 @@ class TestStartConstantFlowMix:
             sentinel.port,
             [
                 ("A MXRM 3", "A 3"),
-                ("A MXMF 1000000000 0", "A 1000000000 0"),
-                ("A MXRFF 2.50", "A 2.50 7 SLPM"),
                 ("A MXMF 799999903 200000097", "A 799999903 200000097"),
                 ("A MXRFF 4.90", "A 4.90 7 SLPM"),
                 ("A MXRS 1", "A 2"),

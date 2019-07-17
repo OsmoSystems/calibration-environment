@@ -450,10 +450,12 @@ def start_constant_flow_mix(
         target_flow_rate_slpm, o2_source_gas_o2_fraction, target_o2_fraction
     )
     if validation_errors.any():
+        errors_string = ", ".join(validation_errors[validation_errors].index.format())
         raise ValueError(
             (
                 f"Invalid flow mix: {target_o2_fraction} parts O2 at {target_flow_rate_slpm} SLPM "
-                f"with {o2_source_gas_o2_fraction} source O2 fraction"
+                f"with {o2_source_gas_o2_fraction} source O2 fraction\n"
+                f"Errors: {errors_string}"
             )
         )
     n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(

@@ -402,9 +402,33 @@ class TestStartConstantFlowMix:
             sentinel.port,
             [
                 ("A MXRM 3", "A 3"),
-                ("A MXRFF 2.5", "A 2.50 7 SLPM"),
+                ("A MXRFF 2.50", "A 2.50 7 SLPM"),
                 ("A MXMF 800000000 200000000", "A 800000000 200000000"),
-                ("A MXRFF 5", "A 5.00 7 SLPM"),
+                ("A MXRFF 5.00", "A 5.00 7 SLPM"),
+                ("A MXRS 1", "A 2"),
+            ],
+        )
+
+    def test_formats_requests_sensibly_even_when_ridiculous_fractions_requested(
+        self, mocker
+    ):
+        mock_send_sequence = mocker.patch.object(
+            module, "_send_sequence_with_expected_responses"
+        )
+
+        module.start_constant_flow_mix(
+            sentinel.port,
+            target_flow_rate_slpm=4.900000219837419237412374,
+            target_o2_fraction=0.100000111111111111111111111111111,
+            o2_source_gas_o2_fraction=0.5000003129384612384761234981723,
+        )
+        mock_send_sequence.assert_called_with(
+            sentinel.port,
+            [
+                ("A MXRM 3", "A 3"),
+                ("A MXRFF 2.50", "A 2.50 7 SLPM"),
+                ("A MXMF 799999903 200000097", "A 799999903 200000097"),
+                ("A MXRFF 4.90", "A 4.90 7 SLPM"),
                 ("A MXRS 1", "A 2"),
             ],
         )

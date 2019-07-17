@@ -488,7 +488,7 @@ def start_constant_flow_mix(
             f"A {_MIXER_MODE_CODE_CONSTANT_FLOW}",
         ),
         (  # Initially set flow rate to a small number to make sure the fraction goes through.
-            f"{_DEVICE_ID} MXRFF {min_mfc_flow_rate}",
+            f"{_DEVICE_ID} MXRFF {min_mfc_flow_rate:.2f}",
             f"{_DEVICE_ID} {min_mfc_flow_rate:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
         ),
         (  # Set target fraction.
@@ -496,7 +496,7 @@ def start_constant_flow_mix(
             f"{_DEVICE_ID} {n2_ppb} {o2_source_gas_ppb}",
         ),
         (  # Set desired flow rate
-            f"{_DEVICE_ID} MXRFF {target_flow_rate_slpm}",
+            f"{_DEVICE_ID} MXRFF {target_flow_rate_slpm:.2f}",
             f"{_DEVICE_ID} {target_flow_rate_slpm:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
         ),
         (  # mixer run state: Start mixin'

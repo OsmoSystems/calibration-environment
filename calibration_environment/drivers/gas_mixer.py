@@ -9,6 +9,7 @@ import pandas as pd
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
 )
+from calibration_environment.retry import retry_on_exception
 
 """ Controls & monitoring for Osmo's Alicat gas mixing system
 Assumptions:
@@ -240,6 +241,12 @@ def _assert_expected_units(mixer_status_response: MixerStatusResponse) -> None:
 def _parse_mixer_status(mixer_status_str: str) -> pd.Series:
     """ Parse a mixer status string returned from a QMXS ("query mixer status") command """
     mixer_status_values = mixer_status_str.split()
+    if len(mixer_status_values) != len(MixerStatusResponse._fields):
+        raise UnexpectedMixerResponse(
+            f'Mixer response "{mixer_status_str}" contained {len(mixer_status_values)} '
+            f"fields instead of the expected {len(MixerStatusResponse._fields)}."
+        )
+
     mixer_status_response = MixerStatusResponse(*mixer_status_values)
 
     _assert_expected_units(mixer_status_response)
@@ -284,6 +291,7 @@ def _send_sequence_with_expected_responses(
             )
 
 
+@retry_on_exception(UnexpectedMixerResponse)
 def get_mixer_status(port: str) -> pd.Series:
     """ Query mixer status and provide return data helpful for calibration monitoring
 
@@ -326,6 +334,7 @@ def _parse_gas_ids(gas_id_response: str) -> pd.Series:
     return pd.Series({"N2": n2_gas_id, "O2 source gas": o2_gas_id})
 
 
+@retry_on_exception(UnexpectedMixerResponse)
 def get_gas_ids(port: str) -> pd.Series:
     """ Get IDs of gases on each port.
     These are not human readable but will allow us to tell when the source gases change -
@@ -417,6 +426,7 @@ def _get_source_gas_flow_rates_ppb(
     return n2_ppb, o2_source_gas_ppb
 
 
+@retry_on_exception(UnexpectedMixerResponse)
 def stop_flow(port: str) -> None:
     """ Stop flow on the gas mixer.
 
@@ -436,6 +446,7 @@ def stop_flow(port: str) -> None:
     _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)
 
 
+@retry_on_exception(UnexpectedMixerResponse)
 def start_constant_flow_mix(
     port: str,
     target_flow_rate_slpm: float,

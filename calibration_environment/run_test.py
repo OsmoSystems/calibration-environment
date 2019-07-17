@@ -75,54 +75,6 @@ class TestGetAllSensorData:
 
         pd.testing.assert_series_equal(expected_sensor_data, output_sensor_data)
 
-    def test_retries_on_failure(self, mocker):
-        mocker.patch.object(
-            module.gas_mixer,
-            "get_mixer_status",
-            return_value=pd.Series({"status": 0, "error": False}),
-        )
-        mocker.patch.object(
-            module.gas_mixer, "get_gas_ids", return_value=pd.Series({"N2": 0, "O2": 1})
-        )
-        mock_send_command_and_parse_response = mocker.patch.object(
-            module.water_bath, "send_command_and_parse_response"
-        )
-
-        mocker.patch.object(
-            module.ysi,
-            "get_standard_sensor_values",
-            side_effect=[
-                module.ysi.InvalidYsiResponse,
-                pd.Series({"DO or something": 0, "temperature (C)": 1}),
-            ],
-        )
-
-        # Return values for "Read Internal Temperature" and
-        # "Read External Sensor", respectively
-        mock_send_command_and_parse_response.side_effect = [
-            15,
-            16,
-        ] * 2  # Two rounds of calls expected
-
-        expected_sensor_data = pd.Series(
-            {
-                "gas mixer status": 0,
-                "gas mixer error": False,
-                "N2 gas ID": 0,
-                "O2 gas ID": 1,
-                "water bath internal temperature (C)": 15,
-                "water bath external sensor temperature (C)": 16,
-                "YSI DO or something": 0,
-                "YSI temperature (C)": 1,
-            }
-        )
-
-        output_sensor_data = module.get_all_sensor_data(
-            {"gas_mixer": "port 1", "water_bath": "port 2", "ysi": "port 3"}
-        )
-
-        pd.testing.assert_series_equal(expected_sensor_data, output_sensor_data)
-
 
 class TestCollectDataToCsv:
     default_setpoint = pd.Series(

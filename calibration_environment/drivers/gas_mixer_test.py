@@ -243,6 +243,21 @@ class TestParseMixerStatus:
             # This is more of a meta-test that everything is fine with this test when the units are correct
             module._parse_mixer_status(mixer_status_str)
 
+    def test_blows_up_if_mix_controller_sends_too_few_fields(self):
+        # The MFC does this occasionally.
+        # It looks as if the mix controller momentarily only reports on one of the MFCs
+        # https://app.asana.com/0/819671808102776/1131541155305248/f
+        mixer_status_str = (
+            f"A 0 6 4096 10 7 4 2 Y - -00.01 +00.00 +0001464 ---------- "
+            "04096 +022.7 +00.00 +923 ---------- 04096 +018.5"
+        )
+
+        with pytest.raises(
+            module.UnexpectedMixerResponse,
+            match="contained 21 fields instead of the expected 24",
+        ):
+            module._parse_mixer_status(mixer_status_str)
+
 
 class TestGetMixerStatus:
     def test_happy_path(self, mock_send_serial_command_and_get_response, mocker):

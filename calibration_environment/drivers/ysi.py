@@ -5,6 +5,7 @@ import pandas as pd
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
 )
+from calibration_environment.retry import retry_on_exception
 
 
 class InvalidYsiResponse(Exception):
@@ -52,6 +53,7 @@ def parse_ysi_response(response_bytes: bytes):
         )
 
 
+@retry_on_exception(InvalidYsiResponse)
 def get_sensor_reading(port: str, command: YSICommand) -> str:
     """ Given a serial command, send it on a serial port and return the response.
     Handles YSI default serial settings and stuff.
@@ -62,6 +64,8 @@ def get_sensor_reading(port: str, command: YSICommand) -> str:
 
     Returns:
         response, as a floating-point value
+    Raises:
+        InvalidYsiResponse if response packet is invalid after retries
     """
 
     response_bytes = send_serial_command_and_get_response(

@@ -1,8 +1,6 @@
-import backoff
 import sys
 import logging
 import time
-import traceback
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -22,40 +20,6 @@ logging.basicConfig(
 )
 
 
-def _retry_handler(details):
-    logging.info(
-        f"Retrying after sensor data error {details}. Traceback: {traceback.format_exc()}"
-    )
-
-
-def _retry_giveup_handler(details):
-    logging.warning(
-        f"Giving up after sensor data error {details}. Traceback: {traceback.format_exc()}"
-    )
-
-    com_ports = details["args"][0]
-
-    water_bath_com_port = com_ports["water_bath"]
-    gas_mixer_com_port = com_ports["gas_mixer"]
-    gas_mixer.stop_flow(gas_mixer_com_port)
-    water_bath.send_settings_command_and_parse_response(
-        water_bath_com_port, unit_on_off=False
-    )
-
-
-@backoff.on_exception(
-    backoff.constant,
-    (
-        ysi.InvalidYsiResponse,
-        gas_mixer.UnexpectedMixerResponse,
-        water_bath.InvalidResponse,
-    ),
-    jitter=backoff.full_jitter,  # Prevents repeated collisions with other regularly-scheduled polling
-    interval=0.5,
-    max_tries=10,
-    on_backoff=_retry_handler,
-    on_giveup=_retry_giveup_handler,
-)
 def get_all_sensor_data(com_ports):
     gas_mixer_status = gas_mixer.get_mixer_status(com_ports["gas_mixer"]).add_prefix(
         "gas mixer "

@@ -113,7 +113,7 @@ def get_calibration_configuration(
     setpoints = read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"])
 
     setpoint_errors = get_validation_errors(setpoints, args["o2_source_gas_fraction"])
-    if len(setpoint_errors) > 0:
+    if len(setpoint_errors):
         raise ValueError(f"Invalid setpoints detected:\n{setpoint_errors}")
 
     com_ports = {

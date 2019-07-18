@@ -422,6 +422,25 @@ def _get_source_gas_flow_rates_ppb(
     return n2_ppb, o2_source_gas_ppb
 
 
+def stop_flow(port: str) -> None:
+    """ Stop flow on the gas mixer.
+
+    Args:
+        port: serial port that gas mixer is connected on
+
+    Returns:
+        None
+
+    Raises:
+        UnexpectedMixerResponse if the mixer is anything other than stopped with no alarms after this command.
+            Likely cause is that the mixer was already stopped due to an alarm.
+    """
+    # mnemonic: "MXRS" = "mixer run state"
+    command = f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.stop_flow.value}"
+    response = send_serial_command_str_and_parse_response(command, port)
+    _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)
+
+
 def start_constant_flow_mix(
     port: str,
     setpoint_flow_rate_slpm: float,
@@ -446,6 +465,11 @@ def start_constant_flow_mix(
         UnexpectedMixerResponse if any mixer response is unexpected. There are currently no known causes for this.
         ValueError if the setpoint flow rate and fraction are not achievable by the mixer configuration.
     """
+    if setpoint_flow_rate_slpm == 0:
+        # MFC controller does not allow you to "start a flow" with a rate of zero. So we just turn it off and head home
+        stop_flow(port)
+        return
+
     validation_errors = get_mix_validation_errors(
         setpoint_flow_rate_slpm, o2_source_gas_o2_fraction, setpoint_gas_o2_fraction
     )
@@ -458,6 +482,7 @@ def start_constant_flow_mix(
                 f"Errors: {errors_string}"
             )
         )
+
     n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(
         o2_source_gas_o2_fraction, setpoint_gas_o2_fraction
     )
@@ -487,22 +512,3 @@ def start_constant_flow_mix(
     ]
 
     _send_sequence_with_expected_responses(port, commands_and_expected_responses)
-
-
-def stop_flow(port: str) -> None:
-    """ Stop flow on the gas mixer.
-
-    Args:
-        port: serial port that gas mixer is connected on
-
-    Returns:
-        None
-
-    Raises:
-        UnexpectedMixerResponse if the mixer is anything other than stopped with no alarms after this command.
-            Likely cause is that the mixer was already stopped due to an alarm.
-    """
-    # mnemonic: "MXRS" = "mixer run state"
-    command = f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.stop_flow.value}"
-    response = send_serial_command_str_and_parse_response(command, port)
-    _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)

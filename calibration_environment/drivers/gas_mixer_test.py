@@ -386,6 +386,18 @@ class TestStartConstantFlowMix:
         )
         assert n2_ppb + o2_ppb == module._ONE_BILLION
 
+    def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
+        mock_stop_flow = mocker.patch.object(module, "stop_flow")
+
+        module.start_constant_flow_mix(
+            sentinel.port,
+            setpoint_flow_rate_slpm=0,
+            setpoint_gas_o2_fraction=1,
+            o2_source_gas_o2_fraction=1,
+        )
+
+        mock_stop_flow.assert_called_once_with(sentinel.port)
+
     def test_calls_appropriate_sequence(self, mocker):
         # Most implementation details of this function are tested manually or verified by mypy.
         # This is just a smoke test

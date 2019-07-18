@@ -243,6 +243,21 @@ class TestParseMixerStatus:
             # This is more of a meta-test that everything is fine with this test when the units are correct
             module._parse_mixer_status(mixer_status_str)
 
+    def test_blows_up_if_mix_controller_sends_too_few_fields(self):
+        # The MFC does this occasionally.
+        # It looks as if the mix controller momentarily only reports on one of the MFCs
+        # https://app.asana.com/0/819671808102776/1131541155305248/f
+        mixer_status_str = (
+            f"A 0 6 4096 10 7 4 2 Y - -00.01 +00.00 +0001464 ---------- "
+            "04096 +022.7 +00.00 +923 ---------- 04096 +018.5"
+        )
+
+        with pytest.raises(
+            module.UnexpectedMixerResponse,
+            match="contained 21 fields instead of the expected 24",
+        ):
+            module._parse_mixer_status(mixer_status_str)
+
 
 class TestGetMixerStatus:
     def test_happy_path(self, mock_send_serial_command_and_get_response, mocker):
@@ -253,7 +268,7 @@ class TestGetMixerStatus:
             module, "_parse_mixer_status", return_value=sentinel.parsed_status
         )
 
-        status = module.get_mixer_status(sentinel.port)
+        status = module.get_mixer_status_with_retry(sentinel.port)
 
         mock_send_serial_command_and_get_response.assert_called_with(
             "A QMXS", sentinel.port
@@ -261,11 +276,11 @@ class TestGetMixerStatus:
         mock_parse_mixer_status.assert_called_with(sentinel.serial_response)
         assert status == sentinel.parsed_status
 
-    def test_no_response_error(self, mock_send_serial_command_and_get_response, mocker):
+    def test_no_response_error(self, mock_send_serial_command_and_get_response):
         mock_send_serial_command_and_get_response.return_value = ""
 
         with pytest.raises(module.UnexpectedMixerResponse, match="No response"):
-            module.get_mixer_status(sentinel.port)
+            module._get_mixer_status(sentinel.port)
 
 
 class TestParseGasIds:
@@ -285,7 +300,7 @@ class TestStopFlow:
             f"A {module._MixControllerStateCode.stopped_ok.value}"
         )
 
-        module.stop_flow(mock.sentinel.port)
+        module.stop_flow_with_retry(mock.sentinel.port)
 
         mock_send_serial_command_and_get_response.assert_called_with(
             "A MXRS 2", mock.sentinel.port
@@ -298,7 +313,7 @@ class TestStopFlow:
         )
 
         with pytest.raises(module.UnexpectedMixerResponse, match="Device is mixing."):
-            module.stop_flow(mock.sentinel.port)
+            module._stop_flow(mock.sentinel.port)
 
 
 class TestAssertMixerState:
@@ -310,21 +325,6 @@ class TestAssertMixerState:
         actual_code_number = 5  # There's an alarm
         with pytest.raises(module.UnexpectedMixerResponse, match="alarm"):
             module._assert_mixer_state(f"A {actual_code_number}", expected_code)
-
-
-class TestAssertValidMix:
-    @pytest.mark.parametrize(
-        "flow_rate_slpm, o2_source_gas_fraction, should_raise",
-        [(5, 0.1, False), (99, 99, True)],
-    )
-    def test_raises_appropriately(
-        self, flow_rate_slpm, o2_source_gas_fraction, should_raise
-    ):
-        if should_raise:
-            with pytest.raises(ValueError, match="mixer only goes up to"):
-                module._assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
-        else:
-            module._assert_valid_mix(flow_rate_slpm, o2_source_gas_fraction)
 
 
 class TestStartConstantFlowMix:
@@ -350,9 +350,9 @@ class TestStartConstantFlowMix:
             )
 
     def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
-        mock_stop_flow = mocker.patch.object(module, "stop_flow")
+        mock_stop_flow = mocker.patch.object(module, "stop_flow_with_retry")
 
-        module.start_constant_flow_mix(
+        module.start_constant_flow_mix_with_retry(
             sentinel.port,
             target_flow_rate_slpm=0,
             target_o2_fraction=1,
@@ -377,7 +377,7 @@ class TestStartConstantFlowMix:
             module, "_send_sequence_with_expected_responses"
         )
 
-        module.start_constant_flow_mix(
+        module.start_constant_flow_mix_with_retry(
             sentinel.port,
             target_flow_rate_slpm=5,
             target_o2_fraction=0.1,
@@ -387,9 +387,31 @@ class TestStartConstantFlowMix:
             sentinel.port,
             [
                 ("A MXRM 3", "A 3"),
-                ("A MXRFF 2.5", "A 2.50 7 SLPM"),
                 ("A MXMF 800000000 200000000", "A 800000000 200000000"),
-                ("A MXRFF 5", "A 5.00 7 SLPM"),
+                ("A MXRFF 5.00", "A 5.00 7 SLPM"),
+                ("A MXRS 1", "A 2"),
+            ],
+        )
+
+    def test_formats_requests_sensibly_even_when_ridiculous_fractions_requested(
+        self, mocker
+    ):
+        mock_send_sequence = mocker.patch.object(
+            module, "_send_sequence_with_expected_responses"
+        )
+
+        module.start_constant_flow_mix_with_retry(
+            sentinel.port,
+            target_flow_rate_slpm=4.900000219837419237412374,
+            target_o2_fraction=0.100000111111111111111111111111111,
+            o2_source_gas_o2_fraction=0.5000003129384612384761234981723,
+        )
+        mock_send_sequence.assert_called_with(
+            sentinel.port,
+            [
+                ("A MXRM 3", "A 3"),
+                ("A MXMF 799999903 200000097", "A 799999903 200000097"),
+                ("A MXRFF 4.90", "A 4.90 7 SLPM"),
                 ("A MXRS 1", "A 2"),
             ],
         )

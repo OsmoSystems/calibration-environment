@@ -57,7 +57,7 @@ class TestGetSensorReading:
         )
         mock_serial_interface.return_value = b"$123.456\r\n$ACK\r\n"
 
-        actual_sensor_value = module.get_sensor_reading(
+        actual_sensor_value = module.get_sensor_reading_with_retry(
             sentinel.port, module.YSICommand.get_do_pct_sat
         )
 

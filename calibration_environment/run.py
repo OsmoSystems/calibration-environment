@@ -21,9 +21,9 @@ logging.basicConfig(
 
 
 def get_all_sensor_data(com_ports):
-    gas_mixer_status = gas_mixer.get_mixer_status(com_ports["gas_mixer"]).add_prefix(
-        "gas mixer "
-    )
+    gas_mixer_status = gas_mixer.get_mixer_status_with_retry(
+        com_ports["gas_mixer"]
+    ).add_prefix("gas mixer ")
 
     gas_ids = gas_mixer.get_gas_ids(com_ports["gas_mixer"]).add_suffix(" gas ID")
 
@@ -123,7 +123,7 @@ def run(cli_args=None):
             wait_for_temperature_equilibration(water_bath_com_port)
 
             # Set the gas mixer ratio
-            gas_mixer.start_constant_flow_mix(
+            gas_mixer.start_constant_flow_mix_with_retry(
                 gas_mixer_com_port,
                 setpoint["flow_rate_slpm"],
                 setpoint["o2_target_gas_fraction"],
@@ -161,7 +161,7 @@ def run(cli_args=None):
         if not calibration_configuration.loop:
             break
 
-    gas_mixer.stop_flow(gas_mixer_com_port)
+    gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
     water_bath.send_settings_command_and_parse_response(
         water_bath_com_port, unit_on_off=False
     )

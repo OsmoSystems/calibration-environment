@@ -268,7 +268,7 @@ class TestGetMixerStatus:
             module, "_parse_mixer_status", return_value=sentinel.parsed_status
         )
 
-        status = module.get_mixer_status(sentinel.port)
+        status = module.get_mixer_status_with_retry(sentinel.port)
 
         mock_send_serial_command_and_get_response.assert_called_with(
             "A QMXS", sentinel.port
@@ -300,7 +300,7 @@ class TestStopFlow:
             f"A {module._MixControllerStateCode.stopped_ok.value}"
         )
 
-        module.stop_flow(mock.sentinel.port)
+        module.stop_flow_with_retry(mock.sentinel.port)
 
         mock_send_serial_command_and_get_response.assert_called_with(
             "A MXRS 2", mock.sentinel.port
@@ -313,7 +313,7 @@ class TestStopFlow:
         )
 
         with pytest.raises(module.UnexpectedMixerResponse, match="Device is mixing."):
-            module._stop_flow_no_retry(mock.sentinel.port)
+            module._stop_flow(mock.sentinel.port)
 
 
 class TestAssertMixerState:
@@ -350,9 +350,9 @@ class TestStartConstantFlowMix:
             )
 
     def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
-        mock_stop_flow = mocker.patch.object(module, "stop_flow")
+        mock_stop_flow = mocker.patch.object(module, "stop_flow_with_retry")
 
-        module.start_constant_flow_mix(
+        module.start_constant_flow_mix_with_retry(
             sentinel.port,
             target_flow_rate_slpm=0,
             target_o2_fraction=1,
@@ -377,7 +377,7 @@ class TestStartConstantFlowMix:
             module, "_send_sequence_with_expected_responses"
         )
 
-        module.start_constant_flow_mix(
+        module.start_constant_flow_mix_with_retry(
             sentinel.port,
             target_flow_rate_slpm=5,
             target_o2_fraction=0.1,
@@ -400,7 +400,7 @@ class TestStartConstantFlowMix:
             module, "_send_sequence_with_expected_responses"
         )
 
-        module.start_constant_flow_mix(
+        module.start_constant_flow_mix_with_retry(
             sentinel.port,
             target_flow_rate_slpm=4.900000219837419237412374,
             target_o2_fraction=0.100000111111111111111111111111111,

@@ -53,8 +53,7 @@ def parse_ysi_response(response_bytes: bytes):
         )
 
 
-@retry_on_exception(InvalidYsiResponse)
-def get_sensor_reading(port: str, command: YSICommand) -> str:
+def _get_sensor_reading(port: str, command: YSICommand) -> str:
     """ Given a serial command, send it on a serial port and return the response.
     Handles YSI default serial settings and stuff.
 
@@ -79,15 +78,24 @@ def get_sensor_reading(port: str, command: YSICommand) -> str:
     return parse_ysi_response(response_bytes)
 
 
+get_sensor_reading_with_retry = retry_on_exception(InvalidYsiResponse)(
+    _get_sensor_reading
+)
+
+
 def get_standard_sensor_values(port):
     """ Get a standard complement of sensor values from a YSI sensor in our standard units. """
     return pd.Series(
         {
-            "barometric pressure (mmHg)": get_sensor_reading(
+            "barometric pressure (mmHg)": get_sensor_reading_with_retry(
                 port, YSICommand.get_barometric_pressure_mmhg
             ),
-            "DO (mg/L)": get_sensor_reading(port, YSICommand.get_do_mg_l),
-            "DO (% sat)": get_sensor_reading(port, YSICommand.get_do_pct_sat),
-            "temperature (C)": get_sensor_reading(port, YSICommand.get_temp_c),
+            "DO (mg/L)": get_sensor_reading_with_retry(port, YSICommand.get_do_mg_l),
+            "DO (% sat)": get_sensor_reading_with_retry(
+                port, YSICommand.get_do_pct_sat
+            ),
+            "temperature (C)": get_sensor_reading_with_retry(
+                port, YSICommand.get_temp_c
+            ),
         }
     )

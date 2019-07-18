@@ -291,7 +291,6 @@ def _send_sequence_with_expected_responses(
             )
 
 
-# Declared separately from retry decorator to support testing without decorator slowing things down
 def _get_mixer_status_no_retry(port: str) -> pd.Series:
     """ Query mixer status and provide return data helpful for calibration monitoring
 
@@ -326,7 +325,7 @@ def _get_mixer_status_no_retry(port: str) -> pd.Series:
     return _parse_mixer_status(response)
 
 
-get_mixer_status = retry_on_exception(UnexpectedMixerResponse)(
+get_mixer_status_with_retry = retry_on_exception(UnexpectedMixerResponse)(
     _get_mixer_status_no_retry
 )
 
@@ -339,8 +338,7 @@ def _parse_gas_ids(gas_id_response: str) -> pd.Series:
     return pd.Series({"N2": n2_gas_id, "O2 source gas": o2_gas_id})
 
 
-@retry_on_exception(UnexpectedMixerResponse)
-def get_gas_ids(port: str) -> pd.Series:
+def _get_gas_ids(port: str) -> pd.Series:
     """ Get IDs of gases on each port.
     These are not human readable but will allow us to tell when the source gases change -
     if the mixer is configured with a new, slightly different gas mix, that will get a new number.
@@ -364,6 +362,9 @@ def get_gas_ids(port: str) -> pd.Series:
         )
 
     return _parse_gas_ids(response)
+
+
+get_gas_ids_with_retry = retry_on_exception(UnexpectedMixerResponse)(_get_gas_ids)
 
 
 def _assert_valid_mix(
@@ -437,8 +438,7 @@ def _get_source_gas_flow_rates_ppb(
     return n2_ppb, o2_source_gas_ppb
 
 
-# Declared separately from retry decorator to support testing without decorator slowing things down
-def _stop_flow_no_retry(port: str) -> None:
+def _stop_flow(port: str) -> None:
     """ Stop flow on the gas mixer.
 
     Args:
@@ -457,11 +457,10 @@ def _stop_flow_no_retry(port: str) -> None:
     _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)
 
 
-stop_flow = retry_on_exception(UnexpectedMixerResponse)(_stop_flow_no_retry)
+stop_flow_with_retry = retry_on_exception(UnexpectedMixerResponse)(_stop_flow)
 
 
-@retry_on_exception(UnexpectedMixerResponse)
-def start_constant_flow_mix(
+def _start_constant_flow_mix(
     port: str,
     target_flow_rate_slpm: float,
     target_o2_fraction: float,
@@ -487,7 +486,7 @@ def start_constant_flow_mix(
     """
     if target_flow_rate_slpm == 0:
         # MFC controller does not allow you to "start a flow" with a rate of zero. So we just turn it off and head home
-        stop_flow(port)
+        stop_flow_with_retry(port)
         return
 
     _assert_valid_mix(
@@ -521,3 +520,8 @@ def start_constant_flow_mix(
     ]
 
     _send_sequence_with_expected_responses(port, commands_and_expected_responses)
+
+
+start_constant_flow_mix_with_retry = retry_on_exception(UnexpectedMixerResponse)(
+    _start_constant_flow_mix
+)

@@ -9,6 +9,7 @@ import pandas as pd
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
 )
+from calibration_environment.retry import retry_on_exception
 
 """ Controls & monitoring for Osmo's Alicat gas mixing system
 Assumptions:
@@ -245,6 +246,12 @@ def _assert_expected_units(mixer_status_response: MixerStatusResponse) -> None:
 def _parse_mixer_status(mixer_status_str: str) -> pd.Series:
     """ Parse a mixer status string returned from a QMXS ("query mixer status") command """
     mixer_status_values = mixer_status_str.split()
+    if len(mixer_status_values) != len(MixerStatusResponse._fields):
+        raise UnexpectedMixerResponse(
+            f'Mixer response "{mixer_status_str}" contained {len(mixer_status_values)} '
+            f"fields instead of the expected {len(MixerStatusResponse._fields)}."
+        )
+
     mixer_status_response = MixerStatusResponse(*mixer_status_values)
 
     _assert_expected_units(mixer_status_response)
@@ -289,7 +296,7 @@ def _send_sequence_with_expected_responses(
             )
 
 
-def get_mixer_status(port: str) -> pd.Series:
+def _get_mixer_status(port: str) -> pd.Series:
     """ Query mixer status and provide return data helpful for calibration monitoring
 
     Args:
@@ -323,6 +330,11 @@ def get_mixer_status(port: str) -> pd.Series:
     return _parse_mixer_status(response)
 
 
+get_mixer_status_with_retry = retry_on_exception(UnexpectedMixerResponse)(
+    _get_mixer_status
+)
+
+
 def _parse_gas_ids(gas_id_response: str) -> pd.Series:
     """ Gas ID response is something like "A 1 4" where 1 and 4 are the respective gas IDs on the 2 MFCs. """
     gas_ids = gas_id_response.split()[1:]
@@ -331,7 +343,7 @@ def _parse_gas_ids(gas_id_response: str) -> pd.Series:
     return pd.Series({"N2": n2_gas_id, "O2 source gas": o2_gas_id})
 
 
-def get_gas_ids(port: str) -> pd.Series:
+def _get_gas_ids(port: str) -> pd.Series:
     """ Get IDs of gases on each port.
     These are not human readable but will allow us to tell when the source gases change -
     if the mixer is configured with a new, slightly different gas mix, that will get a new number.
@@ -355,6 +367,9 @@ def get_gas_ids(port: str) -> pd.Series:
         )
 
     return _parse_gas_ids(response)
+
+
+get_gas_ids_with_retry = retry_on_exception(UnexpectedMixerResponse)(_get_gas_ids)
 
 
 def get_mix_validation_errors(
@@ -421,7 +436,7 @@ def _get_source_gas_flow_rates_ppb(
     return n2_ppb, o2_source_gas_ppb
 
 
-def stop_flow(port: str) -> None:
+def _stop_flow(port: str) -> None:
     """ Stop flow on the gas mixer.
 
     Args:
@@ -440,7 +455,10 @@ def stop_flow(port: str) -> None:
     _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)
 
 
-def start_constant_flow_mix(
+stop_flow_with_retry = retry_on_exception(UnexpectedMixerResponse)(_stop_flow)
+
+
+def _start_constant_flow_mix(
     port: str,
     setpoint_flow_rate_slpm: float,
     setpoint_gas_o2_fraction: float,
@@ -466,7 +484,7 @@ def start_constant_flow_mix(
     """
     if setpoint_flow_rate_slpm == 0:
         # MFC controller does not allow you to "start a flow" with a rate of zero. So we just turn it off and head home
-        stop_flow(port)
+        stop_flow_with_retry(port)
         return
 
     validation_errors = get_mix_validation_errors(
@@ -485,23 +503,22 @@ def start_constant_flow_mix(
     n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(
         o2_source_gas_o2_fraction, setpoint_gas_o2_fraction
     )
-    min_mfc_flow_rate = 2.5  # flow rate of our smallest MFC
 
     commands_and_expected_responses = [
         (  # Set mixer run mode to constant flow
             f"{_DEVICE_ID} MXRM {_MIXER_MODE_CODE_CONSTANT_FLOW}",
             f"A {_MIXER_MODE_CODE_CONSTANT_FLOW}",
         ),
-        (  # Initially set flow rate to a small number to make sure the fraction goes through.
-            f"{_DEVICE_ID} MXRFF {min_mfc_flow_rate}",
-            f"{_DEVICE_ID} {min_mfc_flow_rate:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
-        ),
         (  # Set target fraction.
+            # NOTE: it is important to set the fraction before the flow rate,
+            # since the mix controller will automatically reset the flow rate to something that works based on the
+            # fraction (thus rejecting our setpoint if we set the flow rate first),
+            # but not vice versa (fraction first is always respected if possible).
             f"{_DEVICE_ID} MXMF {n2_ppb} {o2_source_gas_ppb}",
             f"{_DEVICE_ID} {n2_ppb} {o2_source_gas_ppb}",
         ),
         (  # Set desired flow rate
-            f"{_DEVICE_ID} MXRFF {setpoint_flow_rate_slpm}",
+            f"{_DEVICE_ID} MXRFF {setpoint_flow_rate_slpm:.2f}",
             f"{_DEVICE_ID} {setpoint_flow_rate_slpm:.2f} {_FLOW_UNIT_CODE_SLPM} SLPM",
         ),
         (  # mixer run state: Start mixin'
@@ -511,3 +528,8 @@ def start_constant_flow_mix(
     ]
 
     _send_sequence_with_expected_responses(port, commands_and_expected_responses)
+
+
+start_constant_flow_mix_with_retry = retry_on_exception(UnexpectedMixerResponse)(
+    _start_constant_flow_mix
+)

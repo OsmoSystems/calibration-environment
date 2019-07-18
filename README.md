@@ -28,3 +28,6 @@ Use `run_calibration --help` for a full list of options.
 | flow_rate_slpm         | The desired setpoint flow rate in Standard Liters Per Minute                                             |
 | o2_target_gas_fraction | The desired O2 fraction of the output gas mix.                                         |
 | hold_time              | The amount of time in seconds to hold at this setpoint for data collection. |
+
+## Instruction Manual
+For more detailed usage instructions for the entire system, see the [Calibration Environment Instruction Manual](https://docs.google.com/document/d/1oup6LbgBMT-911XfBvfCwH3geqThblB5ilEUbtDBjI8/edit#)

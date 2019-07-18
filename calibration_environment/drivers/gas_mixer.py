@@ -381,12 +381,12 @@ def get_mix_validation_errors(
             setpoint_gas_o2_fraction > o2_source_gas_o2_fraction,
         f"O2 flow rate > {_O2_SOURCE_GAS_MAX_FLOW} SLPM":
             o2_source_gas_flow_rate > _O2_SOURCE_GAS_MAX_FLOW,
-        f"O2 flow rate < {_O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM":
+        f"O2 flow rate < 2% of full scale ({_O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM)":
             o2_source_gas_flow_rate < _O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION
             and o2_source_gas_flow_rate != 0,
         f"N2 flow rate > {_N2_MAX_FLOW} SLPM":
             n2_source_gas_flow_rate > _N2_MAX_FLOW,
-        f"N2 flow rate < {_N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM":
+        f"N2 flow rate < 2% of full scale ({_N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM)":
             n2_source_gas_flow_rate < _N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION
             and n2_source_gas_flow_rate != 0,
         # fmt: on

@@ -319,8 +319,8 @@ class TestAssertValidMix:
             (1, 1, 1, 1),
             (0.5, 1, 1, 0.5),
             (1, 0.5, 1, 0.5),
-            (1, 2, 2, 1),
-            (1, 1, 2, 0.5),
+            (1, 0.25, 0.25, 1),
+            (1, 1, 0.5, 2),
         ],
     )
     def test_get_o2_source_gas_flow_rate(
@@ -336,33 +336,47 @@ class TestAssertValidMix:
         assert actual == expected_o2_source_gas_flow_rate
 
     @pytest.mark.parametrize(
-        "setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors",
+        "name, setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors",
         [
             # Flow rates with O2 source gas fraction of 1:
             #   O2 = setpoint_total_flow_rate * setpoint_o2_fraction
             #   N2 = setpoint_total_flow_rate - O2 flow rate
-            # O2 2.5, N2 0
-            (2.5, 1, []),
-            # O2 0, N2 2.5
-            (2.5, 0, []),
-            # O2 1.25, N2 1.25
-            (2.5, 0.5, []),
-            # O2 2, N2 -1
-            (1, 2, ["setpoint gas O2 fraction too high", "N2 flow rate < 0.2 SLPM"]),
-            # O2 2.6, N2 0
-            (2.6, 1, ["O2 flow rate > 2.5 SLPM"]),
-            # O2 11, N2 11
-            (22, 0.5, ["O2 flow rate > 2.5 SLPM", "N2 flow rate > 10 SLPM"]),
-            # O2 0, N2 11
-            (11, 0, ["N2 flow rate > 10 SLPM"]),
-            # O2 0.001, N2 0.999
-            (1, 0.001, ["O2 flow rate < 0.05 SLPM"]),
-            # O2 0.999, N2 0.001
-            (1, 0.999, ["N2 flow rate < 0.2 SLPM"]),
+            ("O2 2.5, N2 0", 2.5, 1, []),
+            ("O2 0, N2 2.5", 2.5, 0, []),
+            ("O2 1.25, N2 1.25", 2.5, 0.5, []),
+            (
+                "O2 2, N2 -1",
+                1,
+                2,
+                [
+                    "setpoint gas O2 fraction too high",
+                    "N2 flow rate < 2% of full scale (0.2 SLPM)",
+                ],
+            ),
+            ("O2 2.6, N2 0", 2.6, 1, ["O2 flow rate > 2.5 SLPM"]),
+            (
+                "O2 11, N2 11",
+                22,
+                0.5,
+                ["O2 flow rate > 2.5 SLPM", "N2 flow rate > 10 SLPM"],
+            ),
+            ("O2 0, N2 11", 11, 0, ["N2 flow rate > 10 SLPM"]),
+            (
+                "O2 0.001, N2 0.999",
+                1,
+                0.001,
+                ["O2 flow rate < 2% of full scale (0.05 SLPM)"],
+            ),
+            (
+                "O2 0.999, N2 0.001",
+                1,
+                0.999,
+                ["N2 flow rate < 2% of full scale (0.2 SLPM)"],
+            ),
         ],
     )
     def test_flags_expected_validation_errors(
-        self, setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors
+        self, name, setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors
     ):
         o2_source_gas_fraction = 1
 

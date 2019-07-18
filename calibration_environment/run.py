@@ -25,7 +25,9 @@ def get_all_sensor_data(com_ports):
         com_ports["gas_mixer"]
     ).add_prefix("gas mixer ")
 
-    gas_ids = gas_mixer.get_gas_ids(com_ports["gas_mixer"]).add_suffix(" gas ID")
+    gas_ids = gas_mixer.get_gas_ids_with_retry(com_ports["gas_mixer"]).add_suffix(
+        " gas ID"
+    )
 
     water_bath_status = pd.Series(
         {

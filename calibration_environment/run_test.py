@@ -10,7 +10,7 @@ def mock_drivers(mocker):
     mocker.patch.object(module.gas_mixer, "start_constant_flow_mix_with_retry")
     mocker.patch.object(module.gas_mixer, "stop_flow_with_retry")
     mocker.patch.object(module.gas_mixer, "get_mixer_status_with_retry")
-    mocker.patch.object(module.gas_mixer, "get_gas_ids")
+    mocker.patch.object(module.gas_mixer, "get_gas_ids_with_retry")
 
     mocker.patch.object(module.water_bath, "send_command_and_parse_response")
     mocker.patch.object(module.water_bath, "initialize")
@@ -40,7 +40,9 @@ class TestGetAllSensorData:
             return_value=pd.Series({"status": 0, "error": False}),
         )
         mocker.patch.object(
-            module.gas_mixer, "get_gas_ids", return_value=pd.Series({"N2": 0, "O2": 1})
+            module.gas_mixer,
+            "get_gas_ids_with_retry",
+            return_value=pd.Series({"N2": 0, "O2": 1}),
         )
         mock_send_command_and_parse_response = mocker.patch.object(
             module.water_bath, "send_command_and_parse_response"

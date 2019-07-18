@@ -10,7 +10,9 @@ class TestValidateSetpoints:
         )
         o2_source_gas_fraction = 1
 
-        invalid_setpoints = module.validate_setpoints(setpoints, o2_source_gas_fraction)
+        invalid_setpoints = module.get_validation_errors(
+            setpoints, o2_source_gas_fraction
+        )
 
         expected_column_names = set(
             [
@@ -39,7 +41,9 @@ class TestValidateSetpoints:
             "N2 flow rate > 10 SLPM",
         ]
 
-        invalid_setpoints = module.validate_setpoints(setpoints, o2_source_gas_fraction)
+        invalid_setpoints = module.get_validation_errors(
+            setpoints, o2_source_gas_fraction
+        )
 
         expected_error_columns = invalid_setpoints[expected_errors]
 

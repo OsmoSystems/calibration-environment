@@ -72,7 +72,9 @@ class TestGetCalibrationConfiguration:
         mocker.patch.object(
             module, "_get_output_filename", return_value=sentinel.filepath
         )
-        mocker.patch.object(module, "validate_setpoints", return_value=pd.DataFrame())
+        mocker.patch.object(
+            module, "get_validation_errors", return_value=pd.DataFrame()
+        )
 
         start_date = datetime.now()
 

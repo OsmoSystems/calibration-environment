@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from typing import List, Dict
 
-from .setpoints import read_setpoint_sequence_file, validate_setpoints
+from .setpoints import read_setpoint_sequence_file, get_validation_errors
 
 DEFAULT_GAS_MIXER_COM_PORT = "COM22"
 DEFAULT_WATER_BATH_COM_PORT = "COM21"
@@ -112,7 +112,7 @@ def get_calibration_configuration(
 
     setpoints = read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"])
 
-    setpoint_errors = validate_setpoints(setpoints, args["o2_source_gas_fraction"])
+    setpoint_errors = get_validation_errors(setpoints, args["o2_source_gas_fraction"])
     if len(setpoint_errors) > 0:
         raise ValueError(f"Invalid setpoints detected:\n{setpoint_errors}")
 

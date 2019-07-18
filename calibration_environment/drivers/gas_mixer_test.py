@@ -280,7 +280,7 @@ class TestGetMixerStatus:
         mock_send_serial_command_and_get_response.return_value = ""
 
         with pytest.raises(module.UnexpectedMixerResponse, match="No response"):
-            module._get_mixer_status_no_retry(sentinel.port)
+            module._get_mixer_status(sentinel.port)
 
 
 class TestParseGasIds:

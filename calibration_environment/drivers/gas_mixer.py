@@ -291,7 +291,7 @@ def _send_sequence_with_expected_responses(
             )
 
 
-def _get_mixer_status_no_retry(port: str) -> pd.Series:
+def _get_mixer_status(port: str) -> pd.Series:
     """ Query mixer status and provide return data helpful for calibration monitoring
 
     Args:
@@ -326,7 +326,7 @@ def _get_mixer_status_no_retry(port: str) -> pd.Series:
 
 
 get_mixer_status_with_retry = retry_on_exception(UnexpectedMixerResponse)(
-    _get_mixer_status_no_retry
+    _get_mixer_status
 )
 
 

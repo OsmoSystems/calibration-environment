@@ -486,7 +486,7 @@ def _start_constant_flow_mix(
     """
     if target_flow_rate_slpm == 0:
         # MFC controller does not allow you to "start a flow" with a rate of zero. So we just turn it off and head home
-        stop_flow_with_retry(port)
+        _stop_flow(port)
         return
 
     _assert_valid_mix(

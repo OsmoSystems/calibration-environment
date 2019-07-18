@@ -350,7 +350,7 @@ class TestStartConstantFlowMix:
             )
 
     def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
-        mock_stop_flow = mocker.patch.object(module, "stop_flow_with_retry")
+        mock_stop_flow = mocker.patch.object(module, "_stop_flow")
 
         module.start_constant_flow_mix_with_retry(
             sentinel.port,

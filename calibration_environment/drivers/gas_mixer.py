@@ -179,8 +179,14 @@ def send_serial_command_str_and_parse_response(command_str: str, port: str) -> s
         command=command_bytes,
         baud_rate=_ALICAT_BAUD_RATE,
         response_terminator=_ALICAT_SERIAL_TERMINATOR_BYTE,
-        timeout=0.1,
+        timeout=1,
     )
+
+    if not response_bytes.endswith(_ALICAT_SERIAL_TERMINATOR_BYTE):
+        raise UnexpectedMixerResponse(
+            f'Mixer response "{response_bytes.decode("utf8")}" did not end with '
+            f'alicat serial terminator "{_ALICAT_SERIAL_TERMINATOR_BYTE.decode("utf8")}".'
+        )
 
     return response_bytes.rstrip(_ALICAT_SERIAL_TERMINATOR_BYTE).decode("utf8")
 

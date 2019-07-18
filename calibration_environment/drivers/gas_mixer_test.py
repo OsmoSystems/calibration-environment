@@ -276,11 +276,11 @@ class TestGetMixerStatus:
         mock_parse_mixer_status.assert_called_with(sentinel.serial_response)
         assert status == sentinel.parsed_status
 
-    def test_no_response_error(self, mock_send_serial_command_and_get_response, mocker):
+    def test_no_response_error(self, mock_send_serial_command_and_get_response):
         mock_send_serial_command_and_get_response.return_value = ""
 
         with pytest.raises(module.UnexpectedMixerResponse, match="No response"):
-            module.get_mixer_status(sentinel.port)
+            module._get_mixer_status_no_retry(sentinel.port)
 
 
 class TestParseGasIds:
@@ -313,7 +313,7 @@ class TestStopFlow:
         )
 
         with pytest.raises(module.UnexpectedMixerResponse, match="Device is mixing."):
-            module.stop_flow(mock.sentinel.port)
+            module._stop_flow_no_retry(mock.sentinel.port)
 
 
 class TestAssertMixerState:

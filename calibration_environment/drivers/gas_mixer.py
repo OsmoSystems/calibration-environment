@@ -291,8 +291,8 @@ def _send_sequence_with_expected_responses(
             )
 
 
-@retry_on_exception(UnexpectedMixerResponse)
-def get_mixer_status(port: str) -> pd.Series:
+# Declared separately from retry decorator to support testing without decorator slowing things down
+def _get_mixer_status_no_retry(port: str) -> pd.Series:
     """ Query mixer status and provide return data helpful for calibration monitoring
 
     Args:
@@ -324,6 +324,11 @@ def get_mixer_status(port: str) -> pd.Series:
         )
 
     return _parse_mixer_status(response)
+
+
+get_mixer_status = retry_on_exception(UnexpectedMixerResponse)(
+    _get_mixer_status_no_retry
+)
 
 
 def _parse_gas_ids(gas_id_response: str) -> pd.Series:
@@ -432,8 +437,8 @@ def _get_source_gas_flow_rates_ppb(
     return n2_ppb, o2_source_gas_ppb
 
 
-@retry_on_exception(UnexpectedMixerResponse)
-def stop_flow(port: str) -> None:
+# Declared separately from retry decorator to support testing without decorator slowing things down
+def _stop_flow_no_retry(port: str) -> None:
     """ Stop flow on the gas mixer.
 
     Args:
@@ -450,6 +455,9 @@ def stop_flow(port: str) -> None:
     command = f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.stop_flow.value}"
     response = send_serial_command_str_and_parse_response(command, port)
     _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)
+
+
+stop_flow = retry_on_exception(UnexpectedMixerResponse)(_stop_flow_no_retry)
 
 
 @retry_on_exception(UnexpectedMixerResponse)

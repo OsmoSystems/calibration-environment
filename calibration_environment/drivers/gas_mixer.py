@@ -80,7 +80,9 @@ _LOW_FEED_PRESSURE_ALARM_BIT = 0x008000
 
 _ONE_BILLION = 1000000000
 
-# We shouldn't run the MFCs lower than 1% of their full flow rate [insert reference here]
+# According to Alicat we shouldn't run the MFCs lower than 1-2% of their full flow rate
+# to prevent the risk of the mixture being out of spec / taking longer to equilibrate
+# Use 2% to err on the safe side
 MIN_FLOW_RATE_FRACTION = 0.02
 
 

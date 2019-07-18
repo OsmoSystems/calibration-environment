@@ -393,18 +393,14 @@ class TestSendCommand:
 
 class TestGetTemperatureValidationErrors:
     @pytest.mark.parametrize(
-        "temperature, expected_error",
+        "temperature, expected_errors",
         [
-            (module._LOW_TEMPERATURE_LIMIT - 1, "temperature < 0 C"),
-            (module._HIGH_TEMPERATURE_LIMIT + 1, "temperature > 100 C"),
-            (30, None),
+            (30, []),
+            (module._LOW_TEMPERATURE_LIMIT - 1, ["temperature < 0 C"]),
+            (module._HIGH_TEMPERATURE_LIMIT + 1, ["temperature > 100 C"]),
         ],
     )
-    def test_returns_expected_validation_errors(self, temperature, expected_error):
+    def test_returns_expected_validation_errors(self, temperature, expected_errors):
         validation_errors = module.get_temperature_validation_errors(temperature)
 
-        if expected_error:
-            assert validation_errors[expected_error]
-            assert not validation_errors.all()
-        else:
-            assert not validation_errors.any()
+        assert validation_errors == expected_errors

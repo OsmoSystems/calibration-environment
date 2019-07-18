@@ -347,8 +347,8 @@ class TestAssertValidMix:
             (2.5, 0, []),
             # O2 1.25, N2 1.25
             (2.5, 0.5, []),
-            # O2 5, N2 -2.5
-            (2.5, 2, ["setpoint gas O2 fraction too high"]),
+            # O2 2, N2 -1
+            (1, 2, ["setpoint gas O2 fraction too high", "N2 flow rate < 0.2 SLPM"]),
             # O2 2.6, N2 0
             (2.6, 1, ["O2 flow rate > 2.5 SLPM"]),
             # O2 11, N2 11
@@ -370,7 +370,7 @@ class TestAssertValidMix:
             setpoint_total_flow_rate, o2_source_gas_fraction, setpoint_o2_fraction
         )
 
-        assert mix_validation_errors[expected_errors].all()
+        assert set(mix_validation_errors) == set(expected_errors)
 
 
 class TestStartConstantFlowMix:

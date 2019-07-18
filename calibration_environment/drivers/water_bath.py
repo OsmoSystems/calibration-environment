@@ -1,6 +1,6 @@
 import collections
 
-import pandas as pd
+from typing import List
 
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
@@ -275,21 +275,21 @@ def _validate_precision_matches(precision, expected_precision):
         )
 
 
-def get_temperature_validation_errors(setpoint_temperature: float) -> pd.Series:
+def get_temperature_validation_errors(setpoint_temperature: float) -> List:
     """ Validate that a given temperature is attainable by the water bath.
         Args:
             setpoint_temperature: The desired setpoint temperature in C
         Returns:
             Pandas series with boolean flags indicating errors with this temperature.
     """
-    return pd.Series(
-        {
-            f"temperature < {_LOW_TEMPERATURE_LIMIT} C": setpoint_temperature
-            < _LOW_TEMPERATURE_LIMIT,
-            f"temperature > {_HIGH_TEMPERATURE_LIMIT} C": setpoint_temperature
-            > _HIGH_TEMPERATURE_LIMIT,
-        }
-    )
+    validation_errors = {
+        f"temperature < {_LOW_TEMPERATURE_LIMIT} C": setpoint_temperature
+        < _LOW_TEMPERATURE_LIMIT,
+        f"temperature > {_HIGH_TEMPERATURE_LIMIT} C": setpoint_temperature
+        > _HIGH_TEMPERATURE_LIMIT,
+    }
+
+    return [error for error, has_error in validation_errors.items() if has_error]
 
 
 def _parse_data_bytes_as_float(

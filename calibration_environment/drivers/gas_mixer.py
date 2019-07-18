@@ -361,39 +361,38 @@ def get_mix_validation_errors(
     total_flow_rate_slpm: float,
     o2_source_gas_o2_fraction: float,
     setpoint_gas_o2_fraction: float,
-) -> pd.Series:
+) -> List:
     """ Validate that a given mix is possible on our mixer.
         Args:
             total_flow_rate_slpm: Total setpoint flow rate in SLPM.
             o2_source_gas_o2_fraction: O2 fraction of O2 source gas.
             setpoint_gas_o2_fraction: Desired output gas O2 fraction.
         Returns:
-            Pandas series with boolean flags indicating errors in this mix.
+            List containing validation errors in this mix.
     """
     o2_source_gas_flow_rate = _get_o2_source_gas_flow_rate(
         total_flow_rate_slpm, setpoint_gas_o2_fraction, o2_source_gas_o2_fraction
     )
     n2_source_gas_flow_rate = total_flow_rate_slpm - o2_source_gas_flow_rate
 
-    return pd.Series(
-        # Disable black to make long boolean expressions more readable
+    validation_errors = {
         # fmt: off
-        {
-            "setpoint gas O2 fraction too high":
-                setpoint_gas_o2_fraction > o2_source_gas_o2_fraction,
-            f"O2 flow rate > {_O2_SOURCE_GAS_MAX_FLOW} SLPM":
-                o2_source_gas_flow_rate > _O2_SOURCE_GAS_MAX_FLOW,
-            f"O2 flow rate < {_O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM":
-                o2_source_gas_flow_rate < _O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION
-                and o2_source_gas_flow_rate != 0,
-            f"N2 flow rate > {_N2_MAX_FLOW} SLPM":
-                n2_source_gas_flow_rate > _N2_MAX_FLOW,
-            f"N2 flow rate < {_N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM":
-                n2_source_gas_flow_rate < _N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION
-                and n2_source_gas_flow_rate != 0,
-        }
+        "setpoint gas O2 fraction too high":
+            setpoint_gas_o2_fraction > o2_source_gas_o2_fraction,
+        f"O2 flow rate > {_O2_SOURCE_GAS_MAX_FLOW} SLPM":
+            o2_source_gas_flow_rate > _O2_SOURCE_GAS_MAX_FLOW,
+        f"O2 flow rate < {_O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM":
+            o2_source_gas_flow_rate < _O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION
+            and o2_source_gas_flow_rate != 0,
+        f"N2 flow rate > {_N2_MAX_FLOW} SLPM":
+            n2_source_gas_flow_rate > _N2_MAX_FLOW,
+        f"N2 flow rate < {_N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM":
+            n2_source_gas_flow_rate < _N2_MAX_FLOW * MIN_FLOW_RATE_FRACTION
+            and n2_source_gas_flow_rate != 0,
         # fmt: on
-    )
+    }
+
+    return [error for error, present in validation_errors.items() if present]
 
 
 def _get_o2_source_gas_flow_rate(
@@ -473,8 +472,8 @@ def start_constant_flow_mix(
     validation_errors = get_mix_validation_errors(
         setpoint_flow_rate_slpm, o2_source_gas_o2_fraction, setpoint_gas_o2_fraction
     )
-    if validation_errors.any():
-        errors_string = ", ".join(validation_errors[validation_errors].index.format())
+    if validation_errors:
+        errors_string = ", ".join(validation_errors)
         raise ValueError(
             (
                 f"Invalid flow mix: {setpoint_gas_o2_fraction} setpoint O2 fraction at {setpoint_flow_rate_slpm} SLPM "

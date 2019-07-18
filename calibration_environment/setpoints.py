@@ -7,16 +7,14 @@ from .drivers.water_bath import get_temperature_validation_errors
 def _get_setpoint_validation_errors(
     setpoint: pd.DataFrame, o2_source_gas_fraction: float
 ) -> pd.Series:
-    return pd.concat(
-        [
-            get_mix_validation_errors(
-                setpoint["flow_rate_slpm"],
-                o2_source_gas_fraction,
-                setpoint["o2_target_gas_fraction"],
-            ),
-            get_temperature_validation_errors(setpoint["temperature"]),
-        ]
-    )
+
+    all_errors = get_mix_validation_errors(
+        setpoint["flow_rate_slpm"],
+        o2_source_gas_fraction,
+        setpoint["o2_target_gas_fraction"],
+    ) + get_temperature_validation_errors(setpoint["temperature"])
+
+    return pd.Series({"validation_errors": all_errors})
 
 
 def get_validation_errors(
@@ -37,9 +35,7 @@ def get_validation_errors(
         _get_setpoint_validation_errors, axis=1, args=(o2_source_gas_o2_fraction,)
     )
 
-    rows_with_errors = setpoint_errors.sum(axis=1) > 0
-
-    return setpoint_errors[rows_with_errors]
+    return setpoint_errors.dropna()
 
 
 def read_setpoint_sequence_file(sequence_csv_filepath: str) -> pd.DataFrame:

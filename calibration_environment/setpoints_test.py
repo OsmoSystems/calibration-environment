@@ -14,13 +14,13 @@ class TestValidateSetpoints:
 
         expected_column_names = set(
             [
-                "temperature too low",
-                "temperature too high",
-                "target gas O2 fraction too high",
-                "O2 flow rate too high",
-                "O2 flow rate too low",
-                "N2 flow rate too high",
-                "N2 flow rate too low",
+                "temperature < 0 C",
+                "temperature > 100 C",
+                "setpoint gas O2 fraction too high",
+                "O2 flow rate > 2.5 SLPM",
+                "O2 flow rate < 0.05 SLPM",
+                "N2 flow rate > 10 SLPM",
+                "N2 flow rate < 0.2 SLPM",
             ]
         )
 
@@ -34,9 +34,9 @@ class TestValidateSetpoints:
         )
         o2_source_gas_fraction = 1
         expected_errors = [
-            "temperature too high",
-            "O2 flow rate too high",
-            "N2 flow rate too high",
+            "temperature > 100 C",
+            "O2 flow rate > 2.5 SLPM",
+            "N2 flow rate > 10 SLPM",
         ]
 
         invalid_setpoints = module.validate_setpoints(setpoints, o2_source_gas_fraction)

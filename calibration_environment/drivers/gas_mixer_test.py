@@ -314,11 +314,33 @@ class TestAssertMixerState:
 
 class TestAssertValidMix:
     @pytest.mark.parametrize(
-        "target_flow_rate_slpm, target_o2_fraction, expected_errors",
+        "setpoint_total_flow_rate, setpoint_o2_fraction, o2_source_gas_o2_fraction, expected_o2_source_gas_flow_rate",
+        [
+            (1, 1, 1, 1),
+            (0.5, 1, 1, 0.5),
+            (1, 0.5, 1, 0.5),
+            (1, 2, 2, 1),
+            (1, 1, 2, 0.5),
+        ],
+    )
+    def test_get_o2_source_gas_flow_rate(
+        self,
+        setpoint_total_flow_rate,
+        setpoint_o2_fraction,
+        o2_source_gas_o2_fraction,
+        expected_o2_source_gas_flow_rate,
+    ):
+        actual = module._get_o2_source_gas_flow_rate(
+            setpoint_total_flow_rate, setpoint_o2_fraction, o2_source_gas_o2_fraction
+        )
+        assert actual == expected_o2_source_gas_flow_rate
+
+    @pytest.mark.parametrize(
+        "setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors",
         [
             # Flow rates with O2 source gas fraction of 1:
-            #   O2 = target_flow_rate_slpm * target_o2_fraction
-            #   N2 = target_flow_rate_slpm - O2 flow rate
+            #   O2 = setpoint_total_flow_rate * setpoint_o2_fraction
+            #   N2 = setpoint_total_flow_rate - O2 flow rate
             # O2 2.5, N2 0
             (2.5, 1, []),
             # O2 0, N2 2.5
@@ -326,26 +348,26 @@ class TestAssertValidMix:
             # O2 1.25, N2 1.25
             (2.5, 0.5, []),
             # O2 5, N2 -2.5
-            (2.5, 2, ["target gas O2 fraction too high"]),
+            (2.5, 2, ["setpoint gas O2 fraction too high"]),
             # O2 2.6, N2 0
-            (2.6, 1, ["O2 flow rate too high"]),
+            (2.6, 1, ["O2 flow rate > 2.5 SLPM"]),
             # O2 11, N2 11
-            (22, 0.5, ["O2 flow rate too high", "N2 flow rate too high"]),
+            (22, 0.5, ["O2 flow rate > 2.5 SLPM", "N2 flow rate > 10 SLPM"]),
             # O2 0, N2 11
-            (11, 0, ["N2 flow rate too high"]),
+            (11, 0, ["N2 flow rate > 10 SLPM"]),
             # O2 0.001, N2 0.999
-            (1, 0.001, ["O2 flow rate too low"]),
+            (1, 0.001, ["O2 flow rate < 0.05 SLPM"]),
             # O2 0.999, N2 0.001
-            (1, 0.999, ["N2 flow rate too low"]),
+            (1, 0.999, ["N2 flow rate < 0.2 SLPM"]),
         ],
     )
     def test_flags_expected_validation_errors(
-        self, target_flow_rate_slpm, target_o2_fraction, expected_errors
+        self, setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors
     ):
         o2_source_gas_fraction = 1
 
         mix_validation_errors = module.get_mix_validation_errors(
-            target_flow_rate_slpm, o2_source_gas_fraction, target_o2_fraction
+            setpoint_total_flow_rate, o2_source_gas_fraction, setpoint_o2_fraction
         )
 
         assert mix_validation_errors[expected_errors].all()
@@ -353,32 +375,14 @@ class TestAssertValidMix:
 
 class TestStartConstantFlowMix:
     @pytest.mark.parametrize(
-        "target_o2_fraction, o2_source_gas_o2_fraction, expected_o2_source_gas_fraction",
-        [(1, 1, 1), (0.5, 1, 0.5), (0.5, 0.5, 1), (0.1, 0.2, 0.5)],
+        "setpoint_gas_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01]
     )
-    def test_get_o2_source_gas_fraction(
-        self,
-        target_o2_fraction,
-        o2_source_gas_o2_fraction,
-        expected_o2_source_gas_fraction,
-    ):
-        actual = module._get_o2_source_gas_fraction(
-            target_o2_fraction, o2_source_gas_o2_fraction
-        )
-        assert actual == expected_o2_source_gas_fraction
-
-    def test_get_o2_source_gas_fraction_errors_when_ratio_is_too_high(self):
-        with pytest.raises(ValueError, match="%"):
-            module._get_o2_source_gas_fraction(
-                target_o2_fraction=0.5, o2_source_gas_o2_fraction=0.2
-            )
-
-    @pytest.mark.parametrize("target_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01])
     def test_get_source_gas_flow_rates_ppb_adds_to_one_billion(
-        self, target_o2_fraction
+        self, setpoint_gas_o2_fraction
     ):
         n2_ppb, o2_ppb = module._get_source_gas_flow_rates_ppb(
-            o2_source_gas_o2_fraction=0.21, target_o2_fraction=target_o2_fraction
+            o2_source_gas_o2_fraction=0.21,
+            setpoint_gas_o2_fraction=setpoint_gas_o2_fraction,
         )
         assert n2_ppb + o2_ppb == module._ONE_BILLION
 
@@ -391,8 +395,8 @@ class TestStartConstantFlowMix:
 
         module.start_constant_flow_mix(
             sentinel.port,
-            target_flow_rate_slpm=5,
-            target_o2_fraction=0.1,
+            setpoint_flow_rate_slpm=5,
+            setpoint_gas_o2_fraction=0.1,
             o2_source_gas_o2_fraction=0.5,
         )
         mock_send_sequence.assert_called_with(

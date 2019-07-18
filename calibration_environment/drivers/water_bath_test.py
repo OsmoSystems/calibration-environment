@@ -395,8 +395,8 @@ class TestGetTemperatureValidationErrors:
     @pytest.mark.parametrize(
         "temperature, expected_error",
         [
-            (module._LOW_TEMPERATURE_LIMIT - 1, "temperature too low"),
-            (module._HIGH_TEMPERATURE_LIMIT + 1, "temperature too high"),
+            (module._LOW_TEMPERATURE_LIMIT - 1, "temperature < 0 C"),
+            (module._HIGH_TEMPERATURE_LIMIT + 1, "temperature > 100 C"),
             (30, None),
         ],
     )

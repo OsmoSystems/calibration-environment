@@ -275,17 +275,19 @@ def _validate_precision_matches(precision, expected_precision):
         )
 
 
-def get_temperature_validation_errors(target_temperature: float) -> pd.Series:
+def get_temperature_validation_errors(setpoint_temperature: float) -> pd.Series:
     """ Validate that a given temperature is attainable by the water bath.
-    Args:
-        target_temperature: The desired setpoint temperature in C
-    Returns:
-        Pandas series with boolean flags indicating errors with this temperature.
+        Args:
+            setpoint_temperature: The desired setpoint temperature in C
+        Returns:
+            Pandas series with boolean flags indicating errors with this temperature.
     """
     return pd.Series(
         {
-            "temperature too low": target_temperature < _LOW_TEMPERATURE_LIMIT,
-            "temperature too high": target_temperature > _HIGH_TEMPERATURE_LIMIT,
+            f"temperature < {_LOW_TEMPERATURE_LIMIT} C": setpoint_temperature
+            < _LOW_TEMPERATURE_LIMIT,
+            f"temperature > {_HIGH_TEMPERATURE_LIMIT} C": setpoint_temperature
+            > _HIGH_TEMPERATURE_LIMIT,
         }
     )
 

@@ -38,7 +38,7 @@ class TestSendSerialCommandStrAndGetResponse:
             command=expected_command_bytes,
             baud_rate=module._ALICAT_BAUD_RATE,
             response_terminator=module._ALICAT_SERIAL_TERMINATOR_BYTE,
-            timeout=0.1,
+            timeout=1,
         )
 
     def test_strips_terminator_from_response(self, mocker):
@@ -52,6 +52,18 @@ class TestSendSerialCommandStrAndGetResponse:
             "command", sentinel.port
         )
         assert actual_cleaned_response == expected_cleaned_response
+
+    def test_raises_exception_if_response_terminator_not_found(self, mocker):
+        response_bytes = b"incomplete because I died while writi"
+        mocker.patch.object(
+            module, "send_serial_command_and_get_response", return_value=response_bytes
+        )
+
+        with pytest.raises(
+            module.UnexpectedMixerResponse,
+            match='did not end with alicat serial terminator "\r".',
+        ):
+            module.send_serial_command_str_and_parse_response("command", sentinel.port)
 
 
 @pytest.mark.parametrize(
@@ -416,7 +428,7 @@ class TestStartConstantFlowMix:
         assert n2_ppb + o2_ppb == module._ONE_BILLION
 
     def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
-        mock_stop_flow = mocker.patch.object(module, "stop_flow_with_retry")
+        mock_stop_flow = mocker.patch.object(module, "_stop_flow")
 
         module.start_constant_flow_mix_with_retry(
             sentinel.port,

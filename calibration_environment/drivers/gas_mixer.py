@@ -184,8 +184,14 @@ def send_serial_command_str_and_parse_response(command_str: str, port: str) -> s
         command=command_bytes,
         baud_rate=_ALICAT_BAUD_RATE,
         response_terminator=_ALICAT_SERIAL_TERMINATOR_BYTE,
-        timeout=0.1,
+        timeout=1,
     )
+
+    if not response_bytes.endswith(_ALICAT_SERIAL_TERMINATOR_BYTE):
+        raise UnexpectedMixerResponse(
+            f'Mixer response "{response_bytes.decode("utf8")}" did not end with '
+            f'alicat serial terminator "{_ALICAT_SERIAL_TERMINATOR_BYTE.decode("utf8")}".'
+        )
 
     return response_bytes.rstrip(_ALICAT_SERIAL_TERMINATOR_BYTE).decode("utf8")
 
@@ -484,7 +490,7 @@ def _start_constant_flow_mix(
     """
     if setpoint_flow_rate_slpm == 0:
         # MFC controller does not allow you to "start a flow" with a rate of zero. So we just turn it off and head home
-        stop_flow_with_retry(port)
+        _stop_flow(port)
         return
 
     validation_errors = get_mix_validation_errors(

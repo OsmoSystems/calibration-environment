@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from typing import List, Dict
 
-import pandas as pd
+from .setpoints import read_setpoint_sequence_file, get_validation_errors
 
 DEFAULT_GAS_MIXER_COM_PORT = "COM22"
 DEFAULT_WATER_BATH_COM_PORT = "COM21"
@@ -93,12 +93,6 @@ def _parse_args(args: List[str]) -> Dict:
     return vars(calibration_arg_namespace)
 
 
-def _read_setpoint_sequence_file(sequence_csv_filepath):
-    sequences = pd.read_csv(sequence_csv_filepath)
-
-    return sequences
-
-
 # Copy pasta from run experiment
 def iso_datetime_for_filename(datetime_):
     """ Returns datetime as a ISO-ish format string that can be used in filenames (which can't inclue ":")
@@ -116,6 +110,12 @@ def get_calibration_configuration(
 ) -> CalibrationConfiguration:
     args = _parse_args(cli_args)
 
+    setpoints = read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"])
+
+    setpoint_errors = get_validation_errors(setpoints, args["o2_source_gas_fraction"])
+    if len(setpoint_errors):
+        raise ValueError(f"Invalid setpoints detected:\n{setpoint_errors}")
+
     com_ports = {
         "gas_mixer": args["gas_mixer_com_port"],
         "water_bath": args["water_bath_com_port"],
@@ -124,7 +124,7 @@ def get_calibration_configuration(
 
     calibration_configuration = CalibrationConfiguration(
         setpoint_sequence_csv_filepath=args["setpoint_sequence_csv_filepath"],
-        setpoints=_read_setpoint_sequence_file(args["setpoint_sequence_csv_filepath"]),
+        setpoints=setpoints,
         com_ports=com_ports,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],

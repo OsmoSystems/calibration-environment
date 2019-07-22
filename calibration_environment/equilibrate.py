@@ -32,10 +32,13 @@ def wait_for_temperature_equilibration(water_bath_com_port: str) -> None:
         now = time.time()
         temperature_log.append((now, current_temperature))
 
-        has_been_logging_for_min_time = now - logging_start_time >= TEMPERATURE_MINIMUM_TIME
+        has_been_logging_for_min_time = (
+            now - logging_start_time >= TEMPERATURE_MINIMUM_TIME
+        )
         if has_been_logging_for_min_time:
             while (
-                temperature_log and now - temperature_log[0][0] > TEMPERATURE_MINIMUM_TIME
+                temperature_log
+                and now - temperature_log[0][0] > TEMPERATURE_MINIMUM_TIME
             ):
                 temperature_log.pop(0)
 

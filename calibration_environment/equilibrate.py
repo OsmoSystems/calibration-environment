@@ -24,18 +24,20 @@ def wait_for_temperature_equilibration(water_bath_com_port: str) -> None:
     logger.info("waiting for water bath temperature equilibration")
 
     temperature_log = []
-    logging_start_time = time.time()
+    logging_start_time = _get_current_time()
     while True:
         current_temperature = water_bath.send_command_and_parse_response(
             water_bath_com_port, "Read External Sensor"
         )
-        now = time.time()
+        now = _get_current_time()
+        print(f"now: {now}, current temp: {current_temperature}")
         temperature_log.append((now, current_temperature))
 
         has_been_logging_for_min_time = (
             now - logging_start_time >= TEMPERATURE_MINIMUM_TIME
         )
         if has_been_logging_for_min_time:
+            print(f"have enough log data")
             while (
                 temperature_log
                 and now - temperature_log[0][0] > TEMPERATURE_MINIMUM_TIME
@@ -50,6 +52,11 @@ def wait_for_temperature_equilibration(water_bath_com_port: str) -> None:
                 return
 
         time.sleep(1)
+
+
+# NOTE: this is to allow mocking this module's time.time() calls in testing
+def _get_current_time():
+    return time.time()
 
 
 def wait_for_gas_mixer_equilibration(gas_mixer_com_port):

@@ -27,7 +27,7 @@ def wait_for_temperature_equilibration(water_bath_com_port: str) -> None:
     logging_start_time = _get_current_time()
     while True:
         current_temperature = water_bath.send_command_and_parse_response(
-            water_bath_com_port, "Read External Sensor"
+            water_bath_com_port, "Read Internal Sensor"
         )
         now = _get_current_time()
         temperature_log.append((now, current_temperature))

@@ -8,7 +8,7 @@ class TestWaitForTemperatureEquilibration:
         time_return_sequence = [logging_start_time] + [i[0] for i in log_values]
         temperature_return_sequence = [i[1] for i in log_values]
 
-        mocker.patch.object(module, "TEMPERATURE_MINIMUM_TIME", minimum_time)
+        mocker.patch.object(module, "_TEMPERATURE_MINIMUM_TIME", minimum_time)
         mock_read_temperature = mocker.patch.object(
             module.water_bath,
             "send_command_and_parse_response",

@@ -28,13 +28,9 @@ def mock_get_calibration_configuration(mocker):
 
 
 @pytest.fixture
-def mock_wait_for_temperature_equilibration(mocker):
-    return mocker.patch.object(module, "wait_for_temperature_equilibration")
-
-
-@pytest.fixture
-def mock_wait_for_gas_mixer_equilibration(mocker):
-    return mocker.patch.object(module, "wait_for_gas_mixer_equilibration")
+def mock_equilibration_wait(mocker):
+    mocker.patch.object(module, "wait_for_gas_mixer_equilibration")
+    mocker.patch.object(module, "wait_for_temperature_equilibration")
 
 
 @pytest.fixture
@@ -228,8 +224,7 @@ class TestRunCalibration:
         mock_drivers,
         mock_get_all_sensor_data,
         mock_get_calibration_configuration,
-        mock_wait_for_temperature_equilibration,
-        mock_wait_for_gas_mixer_equilibration,
+        mock_equilibration_wait,
     ):
         """
         Test is configured to hold at setpoint for 0.2 seconds, and read data
@@ -270,8 +265,7 @@ class TestRunCalibration:
         mock_drivers,
         mock_get_all_sensor_data,
         mock_get_calibration_configuration,
-        mock_wait_for_temperature_equilibration,
-        mock_wait_for_gas_mixer_equilibration,
+        mock_equilibration_wait,
     ):
 
         expected_csv = pd.DataFrame(

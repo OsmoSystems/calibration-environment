@@ -38,7 +38,7 @@ class TestSendSerialCommandStrAndGetResponse:
             command=expected_command_bytes,
             baud_rate=module._ALICAT_BAUD_RATE,
             response_terminator=module._ALICAT_SERIAL_TERMINATOR_BYTE,
-            timeout=0.1,
+            timeout=1,
         )
 
     def test_strips_terminator_from_response(self, mocker):
@@ -52,6 +52,18 @@ class TestSendSerialCommandStrAndGetResponse:
             "command", sentinel.port
         )
         assert actual_cleaned_response == expected_cleaned_response
+
+    def test_raises_exception_if_response_terminator_not_found(self, mocker):
+        response_bytes = b"incomplete because I died while writi"
+        mocker.patch.object(
+            module, "send_serial_command_and_get_response", return_value=response_bytes
+        )
+
+        with pytest.raises(
+            module.UnexpectedMixerResponse,
+            match='did not end with alicat serial terminator "\r".',
+        ):
+            module.send_serial_command_str_and_parse_response("command", sentinel.port)
 
 
 @pytest.mark.parametrize(
@@ -327,48 +339,105 @@ class TestAssertMixerState:
             module._assert_mixer_state(f"A {actual_code_number}", expected_code)
 
 
+class TestAssertValidMix:
+    @pytest.mark.parametrize(
+        "setpoint_total_flow_rate, setpoint_o2_fraction, o2_source_gas_o2_fraction, expected_o2_source_gas_flow_rate",
+        [
+            (1, 1, 1, 1),
+            (0.5, 1, 1, 0.5),
+            (1, 0.5, 1, 0.5),
+            (1, 0.25, 0.25, 1),
+            (1, 1, 0.5, 2),
+        ],
+    )
+    def test_get_o2_source_gas_flow_rate(
+        self,
+        setpoint_total_flow_rate,
+        setpoint_o2_fraction,
+        o2_source_gas_o2_fraction,
+        expected_o2_source_gas_flow_rate,
+    ):
+        actual = module._get_o2_source_gas_flow_rate(
+            setpoint_total_flow_rate, setpoint_o2_fraction, o2_source_gas_o2_fraction
+        )
+        assert actual == expected_o2_source_gas_flow_rate
+
+    @pytest.mark.parametrize(
+        "name, setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors",
+        [
+            # Flow rates with O2 source gas fraction of 1:
+            #   O2 = setpoint_total_flow_rate * setpoint_o2_fraction
+            #   N2 = setpoint_total_flow_rate - O2 flow rate
+            ("O2 2.5, N2 0", 2.5, 1, []),
+            ("O2 0, N2 2.5", 2.5, 0, []),
+            ("O2 1.25, N2 1.25", 2.5, 0.5, []),
+            (
+                "O2 2, N2 -1",
+                1,
+                2,
+                [
+                    "setpoint gas O2 fraction too high",
+                    "N2 flow rate < 2% of full scale (0.2 SLPM)",
+                ],
+            ),
+            ("O2 2.6, N2 0", 2.6, 1, ["O2 flow rate > 2.5 SLPM"]),
+            (
+                "O2 11, N2 11",
+                22,
+                0.5,
+                ["O2 flow rate > 2.5 SLPM", "N2 flow rate > 10 SLPM"],
+            ),
+            ("O2 0, N2 11", 11, 0, ["N2 flow rate > 10 SLPM"]),
+            (
+                "O2 0.001, N2 0.999",
+                1,
+                0.001,
+                ["O2 flow rate < 2% of full scale (0.05 SLPM)"],
+            ),
+            (
+                "O2 0.999, N2 0.001",
+                1,
+                0.999,
+                ["N2 flow rate < 2% of full scale (0.2 SLPM)"],
+            ),
+        ],
+    )
+    def test_flags_expected_validation_errors(
+        self, name, setpoint_total_flow_rate, setpoint_o2_fraction, expected_errors
+    ):
+        o2_source_gas_fraction = 1
+
+        mix_validation_errors = module.get_mix_validation_errors(
+            setpoint_total_flow_rate, o2_source_gas_fraction, setpoint_o2_fraction
+        )
+
+        assert set(mix_validation_errors) == set(expected_errors)
+
+
 class TestStartConstantFlowMix:
     @pytest.mark.parametrize(
-        "target_o2_fraction, o2_source_gas_o2_fraction, expected_o2_source_gas_fraction",
-        [(1, 1, 1), (0.5, 1, 0.5), (0.5, 0.5, 1), (0.1, 0.2, 0.5)],
+        "setpoint_gas_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01]
     )
-    def test_get_o2_source_gas_fraction(
-        self,
-        target_o2_fraction,
-        o2_source_gas_o2_fraction,
-        expected_o2_source_gas_fraction,
+    def test_get_source_gas_flow_rates_ppb_adds_to_one_billion(
+        self, setpoint_gas_o2_fraction
     ):
-        actual = module._get_o2_source_gas_fraction(
-            target_o2_fraction, o2_source_gas_o2_fraction
+        n2_ppb, o2_ppb = module._get_source_gas_flow_rates_ppb(
+            o2_source_gas_o2_fraction=0.21,
+            setpoint_gas_o2_fraction=setpoint_gas_o2_fraction,
         )
-        assert actual == expected_o2_source_gas_fraction
-
-    def test_get_o2_source_gas_fraction_errors_when_ratio_is_too_high(self):
-        with pytest.raises(ValueError, match="%"):
-            module._get_o2_source_gas_fraction(
-                target_o2_fraction=0.5, o2_source_gas_o2_fraction=0.2
-            )
+        assert n2_ppb + o2_ppb == module._ONE_BILLION
 
     def test_turns_mixer_off_when_flow_rate_set_to_zero(self, mocker):
         mock_stop_flow = mocker.patch.object(module, "_stop_flow")
 
         module.start_constant_flow_mix_with_retry(
             sentinel.port,
-            target_flow_rate_slpm=0,
-            target_o2_fraction=1,
+            setpoint_flow_rate_slpm=0,
+            setpoint_gas_o2_fraction=1,
             o2_source_gas_o2_fraction=1,
         )
 
         mock_stop_flow.assert_called_once_with(sentinel.port)
-
-    @pytest.mark.parametrize("target_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01])
-    def test_get_source_gas_flow_rates_ppb_adds_to_one_billion(
-        self, target_o2_fraction
-    ):
-        n2_ppb, o2_ppb = module._get_source_gas_flow_rates_ppb(
-            o2_source_gas_o2_fraction=0.21, target_o2_fraction=target_o2_fraction
-        )
-        assert n2_ppb + o2_ppb == module._ONE_BILLION
 
     def test_calls_appropriate_sequence(self, mocker):
         # Most implementation details of this function are tested manually or verified by mypy.
@@ -379,8 +448,8 @@ class TestStartConstantFlowMix:
 
         module.start_constant_flow_mix_with_retry(
             sentinel.port,
-            target_flow_rate_slpm=5,
-            target_o2_fraction=0.1,
+            setpoint_flow_rate_slpm=5,
+            setpoint_gas_o2_fraction=0.1,
             o2_source_gas_o2_fraction=0.5,
         )
         mock_send_sequence.assert_called_with(
@@ -402,8 +471,8 @@ class TestStartConstantFlowMix:
 
         module.start_constant_flow_mix_with_retry(
             sentinel.port,
-            target_flow_rate_slpm=4.900000219837419237412374,
-            target_o2_fraction=0.100000111111111111111111111111111,
+            setpoint_flow_rate_slpm=4.900000219837419237412374,
+            setpoint_gas_o2_fraction=0.100000111111111111111111111111111,
             o2_source_gas_o2_fraction=0.5000003129384612384761234981723,
         )
         mock_send_sequence.assert_called_with(

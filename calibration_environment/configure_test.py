@@ -3,11 +3,12 @@ from typing import List
 from unittest.mock import sentinel
 
 import pytest
+import pandas as pd
 
 from . import configure as module
 
 
-class TestParseArgs(object):
+class TestParseArgs:
     def test_all_args_parsed_appropriately(self):
         args_in = [
             "--setpoint-sequence-filepath",
@@ -63,14 +64,17 @@ class TestParseArgs(object):
             module._parse_args(args_in)
 
 
-class TestGetCalibrationConfiguration(object):
+class TestGetCalibrationConfiguration:
     def test_returns_all_configuration_options(self, mocker):
         mocker.patch.object(
-            module, "_read_setpoint_sequence_file"
-        ).return_value = sentinel.setpoints
+            module, "read_setpoint_sequence_file", return_value=sentinel.setpoints
+        )
         mocker.patch.object(
-            module, "_get_output_filename"
-        ).return_value = sentinel.filepath
+            module, "_get_output_filename", return_value=sentinel.filepath
+        )
+        mocker.patch.object(
+            module, "get_validation_errors", return_value=pd.DataFrame()
+        )
 
         start_date = datetime.now()
 
@@ -89,3 +93,27 @@ class TestGetCalibrationConfiguration(object):
         actual_configuration = module.get_calibration_configuration(args_in, start_date)
 
         assert expected_configuration == actual_configuration
+
+    def test_raises_on_invalid_setpoints(self, mocker):
+        invalid_setpoint = pd.DataFrame(
+            [
+                {
+                    "temperature": 101,  # Causes "temperature too high" error
+                    "flow_rate_slpm": 2.5,
+                    "o2_target_gas_fraction": 0.21,
+                }
+            ]
+        )
+        mocker.patch.object(
+            module, "read_setpoint_sequence_file", return_value=invalid_setpoint
+        )
+        mocker.patch.object(
+            module, "_get_output_filename", return_value=sentinel.filepath
+        )
+
+        start_date = datetime.now()
+
+        args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop"]
+
+        with pytest.raises(ValueError, match="Invalid setpoints detected"):
+            module.get_calibration_configuration(args_in, start_date)

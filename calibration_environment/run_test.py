@@ -174,11 +174,11 @@ class TestCollectDataToCsv:
             [
                 {
                     "loop count": 0,
-                    "setpoint temperature (C)": 15.0,
-                    "setpoint hold time seconds": 300.0,
-                    "setpoint flow rate (SLPM)": 2.5,
-                    "setpoint target gas fraction": 0.2,
                     "o2 source gas fraction": 0.23,
+                    "setpoint flow rate (SLPM)": 2.5,
+                    "setpoint hold time seconds": 300.0,
+                    "setpoint target gas fraction": 0.2,
+                    "setpoint temperature (C)": 15.0,
                     "value 0": 0,
                     "value 1": 1,
                     "value 2": 2,

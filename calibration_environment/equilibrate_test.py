@@ -2,6 +2,22 @@ from . import equilibrate as module
 
 
 class TestWaitForTemperatureEquilibration:
+    @staticmethod
+    def _set_up_mocking(mocker, log_values, minimum_time):
+        logging_start_time = 0
+        time_return_sequence = [logging_start_time] + [i[0] for i in log_values]
+        temperature_return_sequence = [i[1] for i in log_values]
+
+        mocker.patch.object(module, "TEMPERATURE_MINIMUM_TIME", minimum_time)
+        mock_read_temperature = mocker.patch.object(
+            module.water_bath,
+            "send_command_and_parse_response",
+            side_effect=temperature_return_sequence,
+        )
+        mocker.patch.object(module, "time", side_effect=time_return_sequence)
+        mocker.patch.object(module, "sleep", return_value=None)
+        return mock_read_temperature
+
     def test_returns_on_equilibration(self, mocker):
         minimum_time = 30
         # fmt: off
@@ -33,26 +49,3 @@ class TestWaitForTemperatureEquilibration:
 
         module.wait_for_temperature_equilibration("COM99")
         assert mock_read_temperature.call_count == 5
-
-    @staticmethod
-    def _set_up_mocking(mocker, log_values, minimum_time):
-        logging_start_time = 0
-        time_return_sequence = [logging_start_time] + [i[0] for i in log_values]
-        temperature_return_sequence = [i[1] for i in log_values]
-
-        mocker.patch(
-            "calibration_environment.equilibrate.TEMPERATURE_MINIMUM_TIME", minimum_time
-        )
-        mock_read_temperature = mocker.patch.object(
-            module.water_bath,
-            "send_command_and_parse_response",
-            side_effect=temperature_return_sequence,
-        )
-        # NOTE: we can't patch time.time() because logging calls will call time.time() and eat
-        # up items in our sequence, so we patch a proxy function
-        mocker.patch(
-            "calibration_environment.equilibrate._get_current_time",
-            side_effect=time_return_sequence,
-        )
-        mocker.patch("time.sleep", return_value=None)
-        return mock_read_temperature

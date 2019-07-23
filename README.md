@@ -31,3 +31,7 @@ Use `run_calibration --help` for a full list of options.
 
 ## Instruction Manual
 For more detailed usage instructions for the entire system, see the [Calibration Environment Instruction Manual](https://docs.google.com/document/d/1oup6LbgBMT-911XfBvfCwH3geqThblB5ilEUbtDBjI8/edit#)
+
+## Jupyter snippets
+For usage examples, see the "Calibration System - Control & Monitoring.ipynb" or the "Calibration System - Granular Control" [jupyter snippets](https://drive.google.com/drive/folders/1A-Rlb-VYTwQ6Tl3sm12eR-cnmCHbj6UP)
+

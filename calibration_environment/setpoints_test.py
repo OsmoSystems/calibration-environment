@@ -20,4 +20,4 @@ class TestValidateSetpoints:
         )
 
         assert len(invalid_setpoints) == 1
-        assert set(invalid_setpoints.loc[0]["validation_errors"]) == expected_errors
+        assert set(invalid_setpoints.loc[0]) == expected_errors

@@ -8,7 +8,7 @@ class TestValidateSetpoints:
         # O2 flow rate = 22 * .5 = 11
         # N2 flow rate = 22 - 11 = 11
         setpoints = pd.DataFrame(
-            [{"temperature": 101, "flow_rate_slpm": 22, "o2_target_gas_fraction": 0.5}]
+            [{"temperature": 101, "flow_rate_slpm": 22, "o2_fraction": 0.5}]
         )
         o2_source_gas_fraction = 1
         expected_errors = set(

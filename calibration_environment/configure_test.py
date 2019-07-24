@@ -100,7 +100,7 @@ class TestGetCalibrationConfiguration:
                 {
                     "temperature": 101,  # Causes "temperature too high" error
                     "flow_rate_slpm": 2.5,
-                    "o2_target_gas_fraction": 0.21,
+                    "o2_fraction": 0.21,
                 }
             ]
         )

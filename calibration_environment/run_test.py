@@ -80,12 +80,7 @@ class TestGetAllSensorData:
 
 class TestCollectDataToCsv:
     default_setpoint = pd.Series(
-        {
-            "temperature": 15,
-            "hold_time": 300,
-            "flow_rate_slpm": 2.5,
-            "o2_target_gas_fraction": 0.2,
-        }
+        {"temperature": 15, "hold_time": 300, "flow_rate_slpm": 2.5, "o2_fraction": 0.2}
     )
     default_configuration = CalibrationConfiguration(
         setpoint_sequence_csv_filepath="experiment.csv",
@@ -118,7 +113,7 @@ class TestCollectDataToCsv:
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
-            "setpoint target gas fraction",
+            "setpoint target O2 fraction",
             "setpoint temperature (C)",
             "timestamp",
         ]
@@ -144,7 +139,7 @@ class TestCollectDataToCsv:
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
-            "setpoint target gas fraction",
+            "setpoint target O2 fraction",
             "setpoint temperature (C)",
             "timestamp",
         ]
@@ -155,7 +150,7 @@ class TestCollectDataToCsv:
                 "temperature": 15,
                 "hold_time": 300,
                 "flow_rate_slpm": 2.5,
-                "o2_target_gas_fraction": 0.2,
+                "o2_fraction": 0.2,
             }
         )
         test_configuration = self.default_configuration._replace(
@@ -177,7 +172,7 @@ class TestCollectDataToCsv:
                     "o2 source gas fraction": 0.23,
                     "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 300.0,
-                    "setpoint target gas fraction": 0.2,
+                    "setpoint target O2 fraction": 0.2,
                     "setpoint temperature (C)": 15.0,
                     "value 0": 0,
                     "value 1": 1,
@@ -197,7 +192,7 @@ class TestRunCalibration:
             {
                 "temperature": 15,
                 "flow_rate_slpm": 2.5,
-                "o2_target_gas_fraction": 50,
+                "o2_fraction": 50,
                 "hold_time": 0.1,
             }
         ]
@@ -231,7 +226,7 @@ class TestRunCalibration:
                 {
                     "temperature": 15,
                     "flow_rate_slpm": 2.5,
-                    "o2_target_gas_fraction": 50,
+                    "o2_fraction": 50,
                     "hold_time": setpoint_hold_time,
                 }
             ]
@@ -267,7 +262,7 @@ class TestRunCalibration:
                     "o2 source gas fraction": 0.21,
                     "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 0.1,
-                    "setpoint target gas fraction": 50.0,
+                    "setpoint target O2 fraction": 50.0,
                     "setpoint temperature (C)": 15.0,
                     "stub data": 1,
                 }

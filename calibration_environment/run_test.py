@@ -1,3 +1,5 @@
+from unittest.mock import sentinel
+
 import pytest
 import pandas as pd
 
@@ -336,3 +338,34 @@ class TestRunCalibration:
             module.run([])
 
         mock_shut_down.assert_called()
+
+
+class TestShutDown:
+    def test_shuts_down_gas_mixer_and_water_bath(self, mocker):
+        mock_gas_mixer_shutdown = mocker.patch.object(
+            module.gas_mixer, "stop_flow_with_retry"
+        )
+        mock_water_bath_shutdown = mocker.patch.object(
+            module.water_bath, "send_settings_command_and_parse_response"
+        )
+
+        module._shut_down(sentinel.gas_mixer_com_port, sentinel.water_bath_com_port)
+
+        mock_gas_mixer_shutdown.assert_called()
+        mock_water_bath_shutdown.assert_called()
+
+    def test_shuts_down_water_bath_if_gas_mixer_raises(self, mocker):
+        mock_gas_mixer_shutdown = mocker.patch.object(
+            module.gas_mixer, "stop_flow_with_retry", side_effect=Exception()
+        )
+        mock_water_bath_shutdown = mocker.patch.object(
+            module.water_bath, "send_settings_command_and_parse_response"
+        )
+
+        # The expectation is that the Exception is raised and bubbled up, but the code
+        # in the finally block still gets called, so the water bath still gets shut down
+        with pytest.raises(Exception):
+            module._shut_down(sentinel.gas_mixer_com_port, sentinel.water_bath_com_port)
+
+        mock_gas_mixer_shutdown.assert_called()
+        mock_water_bath_shutdown.assert_called()

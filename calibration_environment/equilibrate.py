@@ -26,7 +26,7 @@ def _is_temperature_equilibrated(sensor_data_log):
         return False
 
     window_start_timestamp = newest_timestamp - _TEMPERATURE_MINIMUM_STABLE_TIME
-    data_window = sensor_data_log.loc[
+    data_window = sensor_data_log[
         sensor_data_log[_TIMESTAMP_FIELD_NAME] >= window_start_timestamp
     ]
 

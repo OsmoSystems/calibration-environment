@@ -4,7 +4,7 @@ from unittest.mock import Mock, sentinel
 import numpy as np
 import pytest
 
-from . import water_bath as module
+from calibration_environment.drivers.water_bath import water_bath as module
 
 
 PREFIX_AND_ADDR_DEFAULTS = dict(

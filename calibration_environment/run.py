@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .datalogging import collect_data_to_csv
+from .data_logging import collect_data_to_csv
 from .drivers import gas_mixer
 from .drivers import water_bath
 from .equilibrate import (

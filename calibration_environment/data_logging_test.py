@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 
 from .configure import CalibrationConfiguration
-from . import datalogging as module
+from . import data_logging as module
 
 
 @pytest.fixture

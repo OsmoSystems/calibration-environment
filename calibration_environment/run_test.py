@@ -20,7 +20,7 @@ def mock_drivers(mocker):
 @pytest.fixture
 def mock_get_all_sensor_data(mocker):
     return mocker.patch(
-        "calibration_environment.datalogging.get_all_sensor_data",
+        "calibration_environment.data_logging.get_all_sensor_data",
         return_value=pd.Series(),
     )
 

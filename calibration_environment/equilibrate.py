@@ -5,7 +5,7 @@ from time import sleep
 import pandas as pd
 
 from .configure import CalibrationConfiguration
-from .datalogging import collect_equilibration_data_to_csv, get_all_sensor_data
+from .data_logging import collect_equilibration_data_to_csv, get_all_sensor_data
 
 
 logger = logging.getLogger(__name__)

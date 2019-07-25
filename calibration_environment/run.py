@@ -72,7 +72,7 @@ def collect_data_to_csv(
                 "setpoint temperature (C)": setpoint["temperature"],
                 "setpoint hold time seconds": setpoint["hold_time"],
                 "setpoint flow rate (SLPM)": setpoint["flow_rate_slpm"],
-                "setpoint target O2 fraction": setpoint["o2_fraction"],
+                "setpoint O2 fraction": setpoint["o2_fraction"],
                 "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
                 "timestamp": datetime.now(),
                 **dict(sensor_data),

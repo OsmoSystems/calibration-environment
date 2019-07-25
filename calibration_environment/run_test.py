@@ -32,6 +32,11 @@ def mock_output_filepath(tmp_path):
     return tmp_path / "test.csv"
 
 
+@pytest.fixture
+def mock_shut_down(mocker):
+    return mocker.patch.object(module, "_shut_down")
+
+
 class TestGetAllSensorData:
     def test_adds_data_prefix_and_suffix(self, mocker):
         mocker.patch.object(
@@ -287,3 +292,52 @@ class TestRunCalibration:
         output_csv = pd.read_csv(mock_output_filepath).drop(columns=["timestamp"])
 
         pd.testing.assert_frame_equal(expected_csv, output_csv)
+
+    def test_shuts_down_at_end(
+        self,
+        mock_output_filepath,
+        mocker,
+        mock_drivers,
+        mock_get_all_sensor_data,
+        mock_get_calibration_configuration,
+        mock_shut_down,
+    ):
+        mock_get_calibration_configuration.return_value = self.default_configuration._replace(
+            output_csv_filepath=mock_output_filepath
+        )
+
+        module.run([])
+
+        mock_shut_down.assert_called()
+
+    @pytest.mark.parametrize(
+        "function_that_might_raise",
+        [
+            (module.gas_mixer, "start_constant_flow_mix_with_retry"),
+            (module.water_bath, "send_command_and_parse_response"),
+            (module.water_bath, "initialize"),
+            (module, "collect_data_to_csv"),
+        ],
+    )
+    def test_shuts_down_after_error(
+        self,
+        mock_output_filepath,
+        mocker,
+        mock_drivers,
+        mock_get_all_sensor_data,
+        mock_get_calibration_configuration,
+        mock_shut_down,
+        function_that_might_raise,
+    ):
+        mock_get_calibration_configuration.return_value = self.default_configuration._replace(
+            output_csv_filepath=mock_output_filepath
+        )
+
+        mocker.patch.object(*function_that_might_raise).side_effect = Exception()
+
+        # The expectation is that the Exception is raised and bubbled up, but the code
+        # in the finally block still gets called, so the system still gets shut down
+        with pytest.raises(Exception):
+            module.run([])
+
+        mock_shut_down.assert_called()

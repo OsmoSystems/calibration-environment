@@ -9,9 +9,7 @@ def _get_setpoint_validation_errors(
 ) -> pd.Series:
 
     all_errors = get_mix_validation_errors(
-        setpoint["flow_rate_slpm"],
-        o2_source_gas_fraction,
-        setpoint["o2_target_gas_fraction"],
+        setpoint["flow_rate_slpm"], o2_source_gas_fraction, setpoint["o2_fraction"]
     ) + get_temperature_validation_errors(setpoint["temperature"])
 
     return all_errors

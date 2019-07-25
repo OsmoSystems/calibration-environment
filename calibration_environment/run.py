@@ -72,7 +72,7 @@ def collect_data_to_csv(
                 "setpoint temperature (C)": setpoint["temperature"],
                 "setpoint hold time seconds": setpoint["hold_time"],
                 "setpoint flow rate (SLPM)": setpoint["flow_rate_slpm"],
-                "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
+                "setpoint O2 fraction": setpoint["o2_fraction"],
                 "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
                 "timestamp": datetime.now(),
                 **dict(sensor_data),
@@ -128,7 +128,7 @@ def run(cli_args=None):
             gas_mixer.start_constant_flow_mix_with_retry(
                 gas_mixer_com_port,
                 setpoint["flow_rate_slpm"],
-                setpoint["o2_target_gas_fraction"],
+                setpoint["o2_fraction"],
                 calibration_configuration.o2_source_gas_fraction,
             )
             wait_for_gas_mixer_equilibration(gas_mixer_com_port)

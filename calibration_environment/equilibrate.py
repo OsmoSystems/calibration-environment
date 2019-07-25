@@ -56,7 +56,9 @@ def wait_for_temperature_equilibration(
     while True:
         current_sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
         timestamp = pd.Series({_TIMESTAMP_FIELD_NAME: datetime.datetime.now()})
-        sensor_data_log = sensor_data_log.append(pd.concat(current_sensor_data, timestamp))
+        sensor_data_log = sensor_data_log.append(
+            pd.concat([current_sensor_data, timestamp]), ignore_index=True
+        )
 
         collect_equilibration_data_to_csv(
             calibration_configuration, current_sensor_data

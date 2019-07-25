@@ -96,7 +96,7 @@ class TestGetCalibrationConfiguration:
 
     def test_does_not_raise_on_valid_setpoints(self, mocker):
         valid_setpoint = pd.DataFrame(
-            [{"temperature": 15, "flow_rate_slpm": 2.5, "o2_target_gas_fraction": 0.21}]
+            [{"temperature": 15, "flow_rate_slpm": 2.5, "o2_fraction": 0.21}]
         )
         mocker.patch.object(
             module, "read_setpoint_sequence_file", return_value=valid_setpoint

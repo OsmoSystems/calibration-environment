@@ -20,8 +20,7 @@ class TestIsTemperatureEquilibrated:
             {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
         test_data = pd.DataFrame(test_data)
-        result = module._is_temperature_equilibrated(test_data)
-        assert result
+        assert module._is_temperature_equilibrated(test_data)
 
     def test_not_enough_data(self):
         now = datetime.datetime.now()
@@ -34,8 +33,7 @@ class TestIsTemperatureEquilibrated:
             {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
         test_data = pd.DataFrame(test_data)
-        result = module._is_temperature_equilibrated(test_data)
-        assert not result
+        assert not module._is_temperature_equilibrated(test_data)
 
     def test_ignores_old_data(self):
         now = datetime.datetime.now()
@@ -53,8 +51,7 @@ class TestIsTemperatureEquilibrated:
             {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
         test_data = pd.DataFrame(test_data)
-        result = module._is_temperature_equilibrated(test_data)
-        assert result
+        assert module._is_temperature_equilibrated(test_data)
 
 
 @pytest.fixture

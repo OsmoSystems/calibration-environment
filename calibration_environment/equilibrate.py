@@ -44,7 +44,7 @@ def wait_for_temperature_equilibration(
     """
     Returns once temperature has not changed by more than
     _TEMPERATURE_MAXIMUM_EQUILIBRATED_VARIATION degrees C for the last
-    _TEMPERATURE_MINIMUM_STABLE_TIME seconds.
+    _TEMPERATURE_MINIMUM_STABLE_TIME.
 
     Args:
         calibration_configuration: CalibrationConfiguration object
@@ -67,7 +67,8 @@ def wait_for_temperature_equilibration(
         if _is_temperature_equilibrated(sensor_data_log):
             current_temperature = current_sensor_data[_YSI_TEMPERATURE_FIELD_NAME]
             logger.info(
-                f"achieved water bath temperature equilibration (current temperature: {current_temperature}°C)"
+                f"water bath temperature equilibrated (current temperature according to "
+                f'"{_YSI_TEMPERATURE_FIELD_NAME}": {current_temperature}°C)'
             )
             return
 

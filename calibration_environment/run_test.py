@@ -111,9 +111,9 @@ class TestCollectDataToCsv:
         assert list(first_row) == [
             "loop count",
             "o2 source gas fraction",
+            "setpoint O2 fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
-            "setpoint O2 fraction",
             "setpoint temperature (C)",
             "timestamp",
         ]
@@ -137,9 +137,9 @@ class TestCollectDataToCsv:
         assert list(first_row) != [
             "loop count",
             "o2 source gas fraction",
+            "setpoint O2 fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
-            "setpoint O2 fraction",
             "setpoint temperature (C)",
             "timestamp",
         ]
@@ -170,9 +170,9 @@ class TestCollectDataToCsv:
                 {
                     "loop count": 0,
                     "o2 source gas fraction": 0.23,
+                    "setpoint O2 fraction": 0.2,
                     "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 300.0,
-                    "setpoint O2 fraction": 0.2,
                     "setpoint temperature (C)": 15.0,
                     "value 0": 0,
                     "value 1": 1,
@@ -260,9 +260,9 @@ class TestRunCalibration:
                 {
                     "loop count": 0,
                     "o2 source gas fraction": 0.21,
+                    "setpoint O2 fraction": 50.0,
                     "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 0.1,
-                    "setpoint O2 fraction": 50.0,
                     "setpoint temperature (C)": 15.0,
                     "stub data": 1,
                 }

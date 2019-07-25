@@ -1,84 +1,54 @@
-import collections
-
-from typing import List
-
+# Serial communications protocol for the NESLAB RTE 17 temperature-controlled water bath
 from calibration_environment.drivers.serial_port import (
     send_serial_command_and_get_response,
 )
+from calibration_environment.drivers.water_bath.constants import (
+    DEFAULT_PREFIX,
+    DEFAULT_DEVICE_ADDRESS_MSB,
+    DEFAULT_DEVICE_ADDRESS_LSB,
+    _QUALIFIER_HEX_TO_PRECISION,
+    ERROR_RESPONSE_COMMAND,
+    DEFAULT_BAUD_RATE,
+    REPORTING_PRECISION,
+    COMMAND_NAME_TO_HEX,
+)
+from calibration_environment.drivers.water_bath.exceptions import (
+    PrecisionMismatch,
+    ErrorResponse,
+    InvalidResponse,
+)
 
-# We're using RS-232, which means the prefix is 0xCA and the device address is
-# always 0x00 0x01
-DEFAULT_PREFIX = 0xCA
-DEFAULT_DEVICE_ADDRESS_MSB = 0x00
-DEFAULT_DEVICE_ADDRESS_LSB = 0x01
+"""
+General serial communications notes:
 
-# The bath can report data with either 0.1 or 0.01 precision. We want the high precision option
-REPORTING_PRECISION = 0.01
-ENABLE_HIGH_PRECISION = {0.01: True, 0.1: False}[REPORTING_PRECISION]
+All data is sent and received in binary form, do not use ASCII. In the following
+pages the binary data is represented in hexadecimal (hex) format.
 
-# Default protocol settings on the NESLAB RTE. They can be reconfigured.
-DEFAULT_BAUD_RATE = 19200
+The NC Serial Communications Protocol is based on a master-slave model.
+The master is a host computer, while the slave is the bath's controller. Only
+the master can initiate a communications transaction (half-duplex). The bath
+ends the transaction by responding to the master’s query. The protocol uses
+either an RS-232 or RS-485 serial interface with the default parameters: 19200
+baud, 1 start bit, 8 data bits, 1 stop bit, no parity.
 
-COMMAND_NAME_TO_HEX = {
-    # Read Commands
-    "Read Internal Temperature": 0x20,
-    "Read External Sensor": 0x21,
-    "Read Setpoint": 0x70,
-    "Read Low Temperature Limit": 0x40,
-    "Read High Temperature Limit": 0x60,
-    "Read Heat Proportional Band": 0x71,
-    "Read Heat Integral": 0x72,
-    "Read Heat Derivative": 0x73,
-    "Read Cool Proportional Band": 0x74,
-    "Read Cool Integral": 0x75,
-    "Read Cool Derivative": 0x76,
-    # Set Commands
-    "Set Setpoint": 0xF0,  # Limited to the range of the bath
-    "Set Low Temperature Limit": 0xC0,  # Limited to the range of the bath
-    "Set High Temperature Limit": 0xE0,  # Limited to the range of the bath
-    "Set Heat Proportional Band": 0xF1,  # (P = 0.1-99.9)
-    "Set Heat Integral": 0xF2,  # (I = 0-9.99)
-    "Set Heat Derivative": 0xF3,  # (D = 0-5.0)
-    "Set Cool Proportional Band": 0xF4,  # (P = 0.1-99.9)
-    "Set Cool Integral": 0xF5,  # (I = 0-9.99)
-    "Set Cool Derivative": 0xF6,  # (D = 0-5.0)
-    # Exclude these from the dictionary of commands as they have non-generic responses
-    # Handle them one-off as necessary
-    # "Read Acknowledge": 0x00,
-    # "Read Status": 0x09,
-    # "Set On/Off Array": 0x81,
-}
+(See SerialPacket for the framing of the communications packet)
 
-SET_ON_OFF_ARRAY_COMMAND = 0x81
-ERROR_RESPONSE_COMMAND = 0x0F
+The master requests information by sending one of the Read Functions. Since no data is
+sent to the bath during a read request, the master uses 00 for the number of data bytes
+following the command byte.
 
+The bath will respond to a Read Function by echoing the lead character, address, and
+command byte, followed by the requested data and checksum. When the bath sends data, a
+qualifier byte is sent first, followed by a two byte signed integer (16 bit, MSB sent
+first). The qualifier byte indicates the precision and units of measure for the
+requested data as detailed in Table 2.
 
-_QUALIFIER_HEX_TO_PRECISION = {
-    0x10: 0.1,
-    0x20: 0.01,
-    0x11: 0.1,  # Units: degrees C
-    0x21: 0.01,  # Units: degrees C
-}
+The master sets parameters in the bath by sending one of the Set Functions. The master
+does not send a qualifier byte in the data field. The master should be pre-programmed to
+send the correct precision and units (it could also read the parameter of interest first
+to decode the correct precision and units needed).
 
-# The water bath can operate at -24C to 150C
-# so use the range at which water is liquid.
-_LOW_TEMPERATURE_LIMIT = 0
-_HIGH_TEMPERATURE_LIMIT = 100
-
-
-class InvalidResponse(ValueError):
-    # Error class used when we can't interpret the response from the bath
-    pass
-
-
-class ErrorResponse(ValueError):
-    # Error class used when we get an Error response from the bath
-    pass
-
-
-class PrecisionMismatch(ValueError):
-    # Error class used when the bath's precision doesn't match our REPORTING_PRECISION
-    pass
+"""
 
 
 class SerialPacket:
@@ -240,23 +210,6 @@ def _validate_precision_matches(precision, expected_precision):
         )
 
 
-def get_temperature_validation_errors(setpoint_temperature: float) -> List:
-    """ Validate that a given temperature is attainable by the water bath.
-        Args:
-            setpoint_temperature: The desired setpoint temperature in C
-        Returns:
-            Pandas series with boolean flags indicating errors with this temperature.
-    """
-    validation_errors = {
-        f"temperature < {_LOW_TEMPERATURE_LIMIT} C": setpoint_temperature
-        < _LOW_TEMPERATURE_LIMIT,
-        f"temperature > {_HIGH_TEMPERATURE_LIMIT} C": setpoint_temperature
-        > _HIGH_TEMPERATURE_LIMIT,
-    }
-
-    return [error for error, has_error in validation_errors.items() if has_error]
-
-
 def _parse_data_bytes_as_float(
     qualified_data_bytes: bytes, expected_precision: float
 ) -> float:
@@ -301,7 +254,7 @@ def _check_for_error_response(serial_packet: SerialPacket):
         )
 
 
-def _send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
+def send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     """ Send command packet bytes to the bath and collect response
     """
 
@@ -370,137 +323,6 @@ def send_command_and_parse_response(
     """
 
     command_packet = _construct_command_packet(command_name, data)
-    response_packet = _send_command(port, command_packet)
+    response_packet = send_command(port, command_packet)
 
     return _parse_data_bytes_as_float(response_packet.data_bytes, REPORTING_PRECISION)
-
-
-OnOffArraySettings = collections.namedtuple(
-    "OnOffArraySettings",
-    [
-        # Each of these can be True (enable), False (disable) or None (don't change)
-        "unit_on_off",  # Turn unit on/off. True: Turn it on. False: Turn it off
-        "external_sensor_enable",  # True: Use external sensor. False: Use internal sensor
-        "faults_enabled",  # Behavior when faults encountered. True: Shut down. False: Continue to run.
-        "mute",
-        "auto_restart",
-        "high_precision_enable",  # Use 0.01 C precision. True: Use 0.01 C. False: Use 0.1 C.
-        "full_range_cool_enable",
-        "serial_comm_enable",  # Serial communication. True: Use serial communication. False: use local
-    ],
-)
-
-
-def _construct_settings_command_packet(settings: OnOffArraySettings) -> SerialPacket:
-    """ Construct a command packet to set on/off settings to desired, hardcoded values
-    """
-    setting_to_command_byte = {False: 0, True: 1, None: 2}
-    data_bytes = bytes(setting_to_command_byte[setting] for setting in settings)
-    return SerialPacket.from_command(
-        command=SET_ON_OFF_ARRAY_COMMAND, data_bytes=data_bytes
-    )
-
-
-def _parse_settings_data_bytes(settings_data_bytes: bytes) -> OnOffArraySettings:
-    """ Parse data_bytes from the bath's response to a "Set On/Off Array" command
-    """
-    return OnOffArraySettings(*settings_data_bytes)
-
-
-def _validate_initialized_settings(settings: OnOffArraySettings):
-    checks = {
-        "Water bath isn't turned on": settings.unit_on_off,
-        "Internal sensor isn't enabled": not settings.external_sensor_enable,
-        f"Precision isn't {REPORTING_PRECISION}": (
-            settings.high_precision_enable == ENABLE_HIGH_PRECISION
-        ),
-        "Serial comms aren't enabled": settings.serial_comm_enable,
-    }
-
-    errors = [error_message for error_message, check in checks.items() if not check]
-    if errors:
-        raise ValueError(errors)
-
-
-def send_settings_command_and_parse_response(
-    port: str,
-    unit_on_off: bool = None,
-    external_sensor_enable: bool = None,
-    faults_enabled: bool = None,
-    mute: bool = None,
-    auto_restart: bool = None,
-    high_precision_enable: bool = None,
-    full_range_cool_enable: bool = None,
-    serial_comm_enable: bool = None,
-) -> OnOffArraySettings:
-    """ Send a settings command to the water bath and parse the response data.
-
-        The "Set On/Off Array" command has a unique data structure in which each data byte
-        represents a single setting that can be toggled (including turning on/off the bath).
-
-        Data bytes meaning:
-            (di: 0 = off, 1 = on, 2 = no change)
-            d1 = unit on/off
-            d2 = sensor enable
-            d3 = faults enabled
-            d4 = mute
-            d5 = auto restart
-            d6 = 0.01°C enable
-            d7 = full range cool enable
-            d8 = serial comm enable
-
-        Args:
-            port: the comm port used by the water bath
-            unit_on_off: if provided, turn unit on (True) or off (False)
-            external_sensor_enable: if provided, determine whether the internal (False) or external (True) probe is
-                used for temperature feedback
-            faults_enabled: if provided, set behavior when faults encountered. True: shut down. False: continue to run.
-            mute: if provided, mute audible alarms (True) or unmute (False)
-            auto_restart: if provided, control auto restart setting
-            high_precision_enable: if provided, set control precision. True: Use 0.01 C. False: Use 0.1 C.
-            full_range_cool_enable: if provided, enable (True) / disable (False) full range cooling
-            serial_comm_enable: if provided, set serial communications status.
-                True: Use serial communication. False: use local (buttons)
-
-        Returns:
-            The response from the water bath as an OnOffArraySettings tuple
-        """
-    settings = OnOffArraySettings(
-        unit_on_off=unit_on_off,
-        external_sensor_enable=external_sensor_enable,
-        faults_enabled=faults_enabled,
-        mute=mute,
-        auto_restart=auto_restart,
-        high_precision_enable=high_precision_enable,
-        full_range_cool_enable=full_range_cool_enable,
-        serial_comm_enable=serial_comm_enable,
-    )
-    settings_command_packet = _construct_settings_command_packet(settings)
-    response_packet = _send_command(port, settings_command_packet)
-
-    return _parse_settings_data_bytes(response_packet.data_bytes)
-
-
-def initialize(port: str) -> OnOffArraySettings:
-    """ Ensure that the water bath is turned on and that its settings are initialized
-        as we expect by sending a set settings command.
-
-        Args:
-            port: The comm port used by the water bath
-    """
-    response_settings = send_settings_command_and_parse_response(
-        port,
-        # Turn it on...
-        unit_on_off=True,
-        # Use internal temperature sensor
-        external_sensor_enable=False,
-        # Assert high precision
-        high_precision_enable=ENABLE_HIGH_PRECISION,
-        # Note: we'd like to make sure that serial communications are enabled,
-        # but they have to be enabled already or else this won't work :p
-        serial_comm_enable=None,
-    )
-
-    _validate_initialized_settings(response_settings)
-
-    return response_settings

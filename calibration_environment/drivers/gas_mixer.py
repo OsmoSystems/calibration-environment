@@ -381,25 +381,25 @@ get_gas_ids_with_retry = retry_on_exception(UnexpectedMixerResponse)(_get_gas_id
 def get_mix_validation_errors(
     total_flow_rate_slpm: float,
     o2_source_gas_o2_fraction: float,
-    setpoint_gas_o2_fraction: float,
+    setpoint_o2_fraction: float,
 ) -> List:
     """ Validate that a given mix is possible on our mixer.
         Args:
             total_flow_rate_slpm: Total setpoint flow rate in SLPM.
             o2_source_gas_o2_fraction: O2 fraction of O2 source gas.
-            setpoint_gas_o2_fraction: Desired output gas O2 fraction.
+            setpoint_o2_fraction: Desired output gas O2 fraction.
         Returns:
             List containing validation errors in this mix.
     """
     o2_source_gas_flow_rate = _get_o2_source_gas_flow_rate(
-        total_flow_rate_slpm, setpoint_gas_o2_fraction, o2_source_gas_o2_fraction
+        total_flow_rate_slpm, setpoint_o2_fraction, o2_source_gas_o2_fraction
     )
     n2_source_gas_flow_rate = total_flow_rate_slpm - o2_source_gas_flow_rate
 
     validation_errors = {
         # fmt: off
         "setpoint gas O2 fraction too high":
-            setpoint_gas_o2_fraction > o2_source_gas_o2_fraction,
+            setpoint_o2_fraction > o2_source_gas_o2_fraction,
         f"O2 flow rate > {_O2_SOURCE_GAS_MAX_FLOW} SLPM":
             o2_source_gas_flow_rate > _O2_SOURCE_GAS_MAX_FLOW,
         f"O2 flow rate < 2% of full scale ({_O2_SOURCE_GAS_MAX_FLOW * MIN_FLOW_RATE_FRACTION} SLPM)":
@@ -417,26 +417,24 @@ def get_mix_validation_errors(
 
 
 def _get_o2_source_gas_flow_rate(
-    total_flow_rate_slpm, setpoint_gas_o2_fraction, o2_source_gas_o2_fraction
+    total_flow_rate_slpm, setpoint_o2_fraction, o2_source_gas_o2_fraction
 ):
-    return total_flow_rate_slpm * setpoint_gas_o2_fraction / o2_source_gas_o2_fraction
+    return total_flow_rate_slpm * setpoint_o2_fraction / o2_source_gas_o2_fraction
 
 
 def _get_source_gas_flow_rates_ppb(
-    o2_source_gas_o2_fraction: float, setpoint_gas_o2_fraction: float
+    o2_source_gas_o2_fraction: float, setpoint_o2_fraction: float
 ) -> Tuple[int, int]:
     """ Calculate how much of each source gas, in ppb, is required to hit a setpoint O2 fraction
 
         Args:
             o2_source_gas_o2_fraction: Fraction of O2 in the source gas connected to mixer 2. Defaults to 1.
-            setpoint_gas_o2_fraction: fraction of O2 in the desired mix
+            setpoint_o2_fraction: fraction of O2 in the desired mix
 
         Returns:
             n2_ppb, o2_source_gas_ppb: tuple of integer PPM values
     """
-    setpoint_o2_source_gas_fraction = (
-        setpoint_gas_o2_fraction / o2_source_gas_o2_fraction
-    )
+    setpoint_o2_source_gas_fraction = setpoint_o2_fraction / o2_source_gas_o2_fraction
     o2_source_gas_ppb = _fraction_to_ppb(setpoint_o2_source_gas_fraction)
     n2_ppb = _complimentary_ppb_value(o2_source_gas_ppb)
     return n2_ppb, o2_source_gas_ppb
@@ -467,7 +465,7 @@ stop_flow_with_retry = retry_on_exception(UnexpectedMixerResponse)(_stop_flow)
 def _start_constant_flow_mix(
     port: str,
     setpoint_flow_rate_slpm: float,
-    setpoint_gas_o2_fraction: float,
+    setpoint_o2_fraction: float,
     o2_source_gas_o2_fraction: float = 1,
 ) -> None:
     """ Commands mixer to start a constant flow rate mix
@@ -476,7 +474,7 @@ def _start_constant_flow_mix(
     Args:
         port: serial port to connect to.
         setpoint_flow_rate_slpm: setpoint flow rate, in SLPM
-        setpoint_gas_o2_fraction: fraction of O2 in the desired mix. Note that if the connected O2
+        setpoint_o2_fraction: fraction of O2 in the desired mix. Note that if the connected O2
             source gas is not pure oxygen, this is not equivalent to the fraction of the O2 source gas in the final mix.
         o2_source_gas_o2_fraction: Fraction of O2 in the source gas connected to mixer 2. Defaults to 1.
             Used to calculate how much of the O2 source gas is required to hit the setpoint O2 fraction.
@@ -494,20 +492,20 @@ def _start_constant_flow_mix(
         return
 
     validation_errors = get_mix_validation_errors(
-        setpoint_flow_rate_slpm, o2_source_gas_o2_fraction, setpoint_gas_o2_fraction
+        setpoint_flow_rate_slpm, o2_source_gas_o2_fraction, setpoint_o2_fraction
     )
     if validation_errors:
         errors_string = ", ".join(validation_errors)
         raise ValueError(
             (
-                f"Invalid flow mix: {setpoint_gas_o2_fraction} setpoint O2 fraction at {setpoint_flow_rate_slpm} SLPM "
+                f"Invalid flow mix: {setpoint_o2_fraction} setpoint O2 fraction at {setpoint_flow_rate_slpm} SLPM "
                 f"with {o2_source_gas_o2_fraction} source O2 fraction\n"
                 f"Errors: {errors_string}"
             )
         )
 
     n2_ppb, o2_source_gas_ppb = _get_source_gas_flow_rates_ppb(
-        o2_source_gas_o2_fraction, setpoint_gas_o2_fraction
+        o2_source_gas_o2_fraction, setpoint_o2_fraction
     )
 
     commands_and_expected_responses = [

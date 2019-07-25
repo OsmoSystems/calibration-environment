@@ -94,6 +94,23 @@ class TestGetCalibrationConfiguration:
 
         assert expected_configuration == actual_configuration
 
+    def test_does_not_raise_on_valid_setpoints(self, mocker):
+        valid_setpoint = pd.DataFrame(
+            [{"temperature": 15, "flow_rate_slpm": 2.5, "o2_target_gas_fraction": 0.21}]
+        )
+        mocker.patch.object(
+            module, "read_setpoint_sequence_file", return_value=valid_setpoint
+        )
+        mocker.patch.object(
+            module, "_get_output_filename", return_value=sentinel.filepath
+        )
+
+        start_date = datetime.now()
+
+        args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop"]
+
+        module.get_calibration_configuration(args_in, start_date)
+
     def test_raises_on_invalid_setpoints(self, mocker):
         invalid_setpoint = pd.DataFrame(
             [

@@ -14,7 +14,7 @@ def _get_setpoint_validation_errors(
         setpoint["o2_target_gas_fraction"],
     ) + get_temperature_validation_errors(setpoint["temperature"])
 
-    return pd.Series({"validation_errors": all_errors})
+    return all_errors
 
 
 def get_validation_errors(
@@ -35,7 +35,8 @@ def get_validation_errors(
         _get_setpoint_validation_errors, axis=1, args=(o2_source_gas_o2_fraction,)
     )
 
-    return setpoint_errors.dropna()
+    errors_present_selector = setpoint_errors.apply(lambda errors: len(errors) > 0)
+    return setpoint_errors[errors_present_selector]
 
 
 def read_setpoint_sequence_file(sequence_csv_filepath: str) -> pd.DataFrame:

@@ -70,7 +70,10 @@ class TestGetCalibrationConfiguration:
             module, "read_setpoint_sequence_file", return_value=sentinel.setpoints
         )
         mocker.patch.object(
-            module, "_get_output_filename", return_value=sentinel.filepath
+            module, "_get_output_csv_filename", return_value=sentinel.filepath
+        )
+        mocker.patch.object(
+            module, "_get_equilibration_csv_filename", return_value=sentinel.filepath
         )
         mocker.patch.object(
             module, "get_validation_errors", return_value=pd.DataFrame()
@@ -87,6 +90,7 @@ class TestGetCalibrationConfiguration:
             o2_source_gas_fraction=0.21,
             loop=True,
             output_csv_filepath=sentinel.filepath,
+            equilibration_csv_filepath=sentinel.filepath,
             collection_interval=60,
         )
 
@@ -108,7 +112,7 @@ class TestGetCalibrationConfiguration:
             module, "read_setpoint_sequence_file", return_value=invalid_setpoint
         )
         mocker.patch.object(
-            module, "_get_output_filename", return_value=sentinel.filepath
+            module, "_get_output_csv_filename", return_value=sentinel.filepath
         )
 
         start_date = datetime.now()

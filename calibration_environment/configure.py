@@ -19,6 +19,7 @@ CalibrationConfiguration = namedtuple(
         "o2_source_gas_fraction",
         "loop",
         "output_csv_filepath",
+        "equilibration_csv_filepath",
         "collection_interval",
     ],
 )
@@ -101,8 +102,12 @@ def iso_datetime_for_filename(datetime_):
     return datetime_.strftime("%Y-%m-%d--%H-%M-%S")
 
 
-def _get_output_filename(start_date):
+def _get_output_csv_filename(start_date):
     return f"{iso_datetime_for_filename(start_date)}_calibration.csv"
+
+
+def _get_equilibration_csv_filename(start_date):
+    return f"{iso_datetime_for_filename(start_date)}_calibration_equilibration.csv"
 
 
 def get_calibration_configuration(
@@ -128,7 +133,8 @@ def get_calibration_configuration(
         com_ports=com_ports,
         o2_source_gas_fraction=args["o2_source_gas_fraction"],
         loop=args["loop"],
-        output_csv_filepath=_get_output_filename(start_date),
+        output_csv_filepath=_get_output_csv_filename(start_date),
+        equilibration_csv_filepath=_get_equilibration_csv_filename(start_date),
         collection_interval=args["collection_interval"],
     )
 

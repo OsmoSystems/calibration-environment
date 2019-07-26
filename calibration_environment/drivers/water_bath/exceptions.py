@@ -11,3 +11,8 @@ class ErrorResponse(ValueError):
 class PrecisionMismatch(ValueError):
     # Error class used when the bath's precision doesn't match our REPORTING_PRECISION
     pass
+
+
+class WaterBathStatusError(ValueError):
+    # Used when the water bath indicates a warning or fault status
+    pass

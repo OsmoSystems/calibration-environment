@@ -7,6 +7,10 @@ from .settings import (  # noqa: F401 unused imports
     send_settings_command_and_parse_response,
     initialize,
 )
+from .status import (  # noqa: F401 unused imports
+    assert_water_bath_status_ok,
+    get_water_bath_status,
+)
 
 """
 A driver for the Thermo Scientific NESLAB RTE 17 Temperature-controlled water bath

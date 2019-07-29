@@ -40,7 +40,7 @@ def get_all_sensor_data(com_ports):
     return pd.concat([gas_mixer_status, gas_ids, water_bath_status, ysi_status])
 
 
-def write_row_to_csv(csv_filepath: str, row: pd.Series) -> None:
+def _write_row_to_csv(csv_filepath: str, row: pd.Series) -> None:
     """
         Appends a row of data to a csv file. Adds a header line if it's a new file.
 
@@ -94,6 +94,6 @@ def collect_data_to_csv(
         **dict(sensor_data),
     }
 
-    write_row_to_csv(calibration_configuration.output_csv_filepath, full_data)
+    _write_row_to_csv(calibration_configuration.output_csv_filepath, full_data)
 
     return full_data

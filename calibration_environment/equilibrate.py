@@ -39,7 +39,9 @@ def _is_temperature_equilibrated(sensor_data_log):
 
 
 def wait_for_temperature_equilibration(
-    calibration_configuration: CalibrationConfiguration, setpoint: pd.Series
+    calibration_configuration: CalibrationConfiguration,
+    setpoint: pd.Series,
+    loop_count: int,
 ) -> None:
     """
     Returns once temperature has not changed by more than
@@ -57,7 +59,8 @@ def wait_for_temperature_equilibration(
     while True:
         current_sensor_data = collect_data_to_csv(
             setpoint,
-            calibration_configuration.com_ports,
+            calibration_configuration,
+            loop_count=loop_count,
             equilibration_status=EquilibrationStatus.TEMPERATURE,
         )
         sensor_data_log = sensor_data_log.append(current_sensor_data, ignore_index=True)
@@ -74,7 +77,9 @@ def wait_for_temperature_equilibration(
 
 
 def wait_for_gas_mixer_equilibration(
-    calibration_configuration: CalibrationConfiguration, setpoint: pd.Series
+    calibration_configuration: CalibrationConfiguration,
+    setpoint: pd.Series,
+    loop_count: int,
 ) -> None:
     # TODO: Equilibration Procedure Software Implementation: Gas mixer
     # https://app.asana.com/0/819671808102776/1128578386488633/f

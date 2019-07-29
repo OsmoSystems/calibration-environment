@@ -87,7 +87,7 @@ class TestWaitForTemperatureEquilibration:
         calibration_configuration = Mock(com_ports=sentinel.com_ports)
 
         module.wait_for_temperature_equilibration(
-            calibration_configuration, sentinel.setpoint
+            calibration_configuration, sentinel.setpoint, sentinel.loop_count
         )
         assert mock_is_temperature_equilibrated.call_count == len(temperature_readings)
 

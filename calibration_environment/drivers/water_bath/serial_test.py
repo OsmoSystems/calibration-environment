@@ -4,12 +4,100 @@ from unittest.mock import Mock, sentinel
 import numpy as np
 import pytest
 
-from . import water_bath as module
+from calibration_environment.drivers.water_bath import serial as module
 
 
 PREFIX_AND_ADDR_DEFAULTS = dict(
     prefix=0xCA, device_address_msb=0x00, device_address_lsb=0x01
 )
+
+
+@pytest.fixture
+def mock_serial_and_response(mocker):
+    return mocker.patch.object(module, "send_serial_command_and_get_response")
+
+
+class TestSendCommand:
+    def test_returns_response_serial_packet_from_bytes(self, mock_serial_and_response):
+        mock_command_packet = Mock()
+        mock_serial_and_response.return_value = b"\xCA\x00\x01\x20\x03\x11\x02\x71\x57"
+
+        actual = module.send_command(sentinel.port, mock_command_packet)
+
+        expected_response_packet = module.SerialPacket(
+            command=0x20,
+            data_bytes_count=0x03,
+            data_bytes=b"\x11\x02\x71",
+            **PREFIX_AND_ADDR_DEFAULTS,
+        )
+
+        assert actual == expected_response_packet
+
+    def test_raises_on_invalid_response(self, mock_serial_and_response):
+        mock_command_packet = Mock()
+        mock_serial_and_response.return_value = b""
+
+        with pytest.raises(module.InvalidResponse):
+            module.send_command(sentinel.port, mock_command_packet)
+
+    def test_raises_on_error_response(self, mock_serial_and_response):
+        mock_command_packet = Mock()
+        # The 0x0F in the command byte position indicates an error response
+        mock_serial_and_response.return_value = b"\xCA\x00\x01\x0F\x02\x01\x99\x53"
+
+        with pytest.raises(module.ErrorResponse):
+            module.send_command(sentinel.port, mock_command_packet)
+
+
+class TestCheckForErrorResponse:
+    def test_check_for_error_response_returns_none_on_normal_response(self):
+        serial_packet = module.SerialPacket(
+            command=0x20,
+            data_bytes_count=0x00,
+            data_bytes=b"",
+            **PREFIX_AND_ADDR_DEFAULTS,
+        )
+
+        assert module._check_for_error_response(serial_packet) is None
+
+    def test_check_for_error_response_identifies_bad_command_error_type(self):
+        serial_packet = module.SerialPacket(
+            command=0x0F,
+            data_bytes_count=0x02,
+            data_bytes=b"\x01\x99",
+            **PREFIX_AND_ADDR_DEFAULTS,
+        )
+
+        with pytest.raises(module.ErrorResponse) as e:
+            module._check_for_error_response(serial_packet)
+
+        assert "Bad Command" in str(e.value)
+
+    def test_check_for_error_response_identifies_bad_checksum_error_type(self):
+        serial_packet = module.SerialPacket(
+            command=0x0F,
+            data_bytes_count=0x02,
+            data_bytes=b"\x03\x99",
+            **PREFIX_AND_ADDR_DEFAULTS,
+        )
+
+        with pytest.raises(module.ErrorResponse) as e:
+            module._check_for_error_response(serial_packet)
+
+        assert "Bad Checksum" in str(e.value)
+
+    def test_check_for_error_response_identifies_echoed_command(self):
+        serial_packet = module.SerialPacket(
+            command=0x0F,
+            data_bytes_count=0x02,
+            data_bytes=b"\x03\x99",
+            **PREFIX_AND_ADDR_DEFAULTS,
+        )
+
+        with pytest.raises(module.ErrorResponse) as e:
+            module._check_for_error_response(serial_packet)
+
+        assert f"0x{0x99:02X}" in str(e.value)
 
 
 class TestCalculateChecksum:
@@ -223,184 +311,3 @@ class TestConstructCommandPacket:
         packet = module._construct_command_packet(command_name, data=data)
         # hexlify to make error message more readable
         assert hexlify(packet.to_bytes()) == hexlify(expected_packet_bytes)
-
-
-class TestConstructSettingsCommandPacket:
-    def test_construct_settings_command_packet(self):
-        settings = module.OnOffArraySettings(
-            # Three Trues, three Falses and two Nones
-            unit_on_off=True,
-            external_sensor_enable=True,
-            faults_enabled=True,
-            mute=False,
-            auto_restart=False,
-            high_precision_enable=False,
-            full_range_cool_enable=None,
-            serial_comm_enable=None,
-        )
-        actual_packet = module._construct_settings_command_packet(settings)
-        expected_packet = module.SerialPacket(
-            command=0x81,
-            data_bytes_count=0x08,
-            data_bytes=b"\x01\x01\x01\x00\x00\x00\x02\x02",
-            **PREFIX_AND_ADDR_DEFAULTS,
-        )
-
-        assert actual_packet == expected_packet
-
-
-class TestParseSettingsDataBytes:
-    def test_parse_settings_data_bytes(self):
-        actual = module._parse_settings_data_bytes(b"\x01\x01\x02\x02\x02\x00\x02\x01")
-        expected = module.OnOffArraySettings(1, 1, 2, 2, 2, 0, 2, 1)
-
-        assert actual == expected
-
-
-class TestValidateSettings:
-    default_initialization_settings = module.OnOffArraySettings(
-        unit_on_off=True,
-        external_sensor_enable=False,
-        faults_enabled=None,
-        mute=None,
-        auto_restart=None,
-        high_precision_enable=True,
-        full_range_cool_enable=None,
-        serial_comm_enable=True,
-    )
-
-    def test_validate_initialization_settings_does_not_raise_if_correct(self):
-        module._validate_initialized_settings(self.default_initialization_settings)
-
-    @pytest.mark.parametrize(
-        "setting, incorrect_value",
-        [
-            ("unit_on_off", False),
-            ("external_sensor_enable", True),
-            ("high_precision_enable", False),
-            ("serial_comm_enable", False),
-        ],
-    )
-    def test_validate_initialization_settings_raises(self, setting, incorrect_value):
-        with pytest.raises(ValueError):
-            settings_with_one_error = self.default_initialization_settings._asdict()
-            settings_with_one_error[setting] = incorrect_value
-
-            module._validate_initialized_settings(
-                module.OnOffArraySettings(**settings_with_one_error)
-            )
-
-    def test_validate_initialization_settings_raises_on_multiple_errors(self):
-        with pytest.raises(ValueError):
-            settings_with_multiple_errors = (
-                self.default_initialization_settings._asdict()
-            )
-            settings_with_multiple_errors["external_sensor_enable"] = False
-            settings_with_multiple_errors["serial_comm_enable"] = False
-
-            module._validate_initialized_settings(
-                module.OnOffArraySettings(**settings_with_multiple_errors)
-            )
-
-
-class TestCheckForErrorResponse:
-    def test_check_for_error_response_returns_none_on_normal_response(self):
-        serial_packet = module.SerialPacket(
-            command=0x20,
-            data_bytes_count=0x00,
-            data_bytes=b"",
-            **PREFIX_AND_ADDR_DEFAULTS,
-        )
-
-        assert module._check_for_error_response(serial_packet) is None
-
-    def test_check_for_error_response_identifies_bad_command_error_type(self):
-        serial_packet = module.SerialPacket(
-            command=0x0F,
-            data_bytes_count=0x02,
-            data_bytes=b"\x01\x99",
-            **PREFIX_AND_ADDR_DEFAULTS,
-        )
-
-        with pytest.raises(module.ErrorResponse) as e:
-            module._check_for_error_response(serial_packet)
-
-        assert "Bad Command" in str(e.value)
-
-    def test_check_for_error_response_identifies_bad_checksum_error_type(self):
-        serial_packet = module.SerialPacket(
-            command=0x0F,
-            data_bytes_count=0x02,
-            data_bytes=b"\x03\x99",
-            **PREFIX_AND_ADDR_DEFAULTS,
-        )
-
-        with pytest.raises(module.ErrorResponse) as e:
-            module._check_for_error_response(serial_packet)
-
-        assert "Bad Checksum" in str(e.value)
-
-    def test_check_for_error_response_identifies_echoed_command(self):
-        serial_packet = module.SerialPacket(
-            command=0x0F,
-            data_bytes_count=0x02,
-            data_bytes=b"\x03\x99",
-            **PREFIX_AND_ADDR_DEFAULTS,
-        )
-
-        with pytest.raises(module.ErrorResponse) as e:
-            module._check_for_error_response(serial_packet)
-
-        assert f"0x{0x99:02X}" in str(e.value)
-
-
-@pytest.fixture
-def mock_serial_and_response(mocker):
-    return mocker.patch.object(module, "send_serial_command_and_get_response")
-
-
-class TestSendCommand:
-    def test_returns_response_serial_packet_from_bytes(self, mock_serial_and_response):
-        mock_command_packet = Mock()
-        mock_serial_and_response.return_value = b"\xCA\x00\x01\x20\x03\x11\x02\x71\x57"
-
-        actual = module._send_command(sentinel.port, mock_command_packet)
-
-        expected_response_packet = module.SerialPacket(
-            command=0x20,
-            data_bytes_count=0x03,
-            data_bytes=b"\x11\x02\x71",
-            **PREFIX_AND_ADDR_DEFAULTS,
-        )
-
-        assert actual == expected_response_packet
-
-    def test_raises_on_invalid_response(self, mock_serial_and_response):
-        mock_command_packet = Mock()
-        mock_serial_and_response.return_value = b""
-
-        with pytest.raises(module.InvalidResponse):
-            module._send_command(sentinel.port, mock_command_packet)
-
-    def test_raises_on_error_response(self, mock_serial_and_response):
-        mock_command_packet = Mock()
-        # The 0x0F in the command byte position indicates an error response
-        mock_serial_and_response.return_value = b"\xCA\x00\x01\x0F\x02\x01\x99\x53"
-
-        with pytest.raises(module.ErrorResponse):
-            module._send_command(sentinel.port, mock_command_packet)
-
-
-class TestGetTemperatureValidationErrors:
-    @pytest.mark.parametrize(
-        "temperature, expected_errors",
-        [
-            (30, []),
-            (module._LOW_TEMPERATURE_LIMIT - 1, ["temperature < 0 C"]),
-            (module._HIGH_TEMPERATURE_LIMIT + 1, ["temperature > 100 C"]),
-        ],
-    )
-    def test_returns_expected_validation_errors(self, temperature, expected_errors):
-        validation_errors = module.get_temperature_validation_errors(temperature)
-
-        assert validation_errors == expected_errors

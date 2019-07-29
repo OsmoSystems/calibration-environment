@@ -6,13 +6,6 @@ from calibration_environment.drivers.water_bath import status as module
 from calibration_environment.drivers.water_bath.exceptions import WaterBathStatusError
 from calibration_environment.drivers.water_bath.serial import SerialPacket
 
-"""
-example packets actually seen
-water_bath.SerialPacket.from_bytes(b'\xca\x00\x01\t\x05\x00\x00\x00\x0e\x08\xda')
-water_bath.SerialPacket.from_bytes(b'\xca\x00\x01\t\x05\x00\x00\x00\x0fhy')
-water_bath.SerialPacket.from_bytes(b'\xca\x00\x01\t\x05\x00\x00\x00\x0ehz')
-"""
-
 
 @pytest.fixture
 def mock_send_command(mocker):
@@ -31,12 +24,12 @@ class TestGetWaterBathStatus:
     def test_get_water_bath_status(self, mock_send_command):
         mock_send_command.return_value = SerialPacket.from_bytes(
             # Actual byte string observed while water bath running
-            b"\xca\x00\x01\t\x05\x00\x00\x00\x0e\x08\xda"
+            b"\xca\x00\x01\x09\x05\x00\x00\x00\x0e\x08\xda"
         )
 
         actual = module.get_water_bath_status(sentinel.port)
         expected = _construct_water_bath_status(
-            col_led_on=True, compressor_on=True, pump_on=True, unit_on=True
+            cool_led_on=True, compressor_on=True, pump_on=True, unit_on=True
         )
 
         # Use _asdict for more helpful errors
@@ -58,9 +51,43 @@ class TestValidateStatus:
     def test_does_not_raise_for_normal_stuff(self):
         module._validate_status(
             _construct_water_bath_status(
-                col_led_on=True, compressor_on=True, pump_on=True, unit_on=True
+                cool_led_on=True, compressor_on=True, pump_on=True, unit_on=True
             )
         )
+
+
+class TestIsErrorKey:
+    def test_chooses_correct_keys(self):
+        expected_error_keys = [
+            "rtd1_open_fault",
+            "rtd1_shorted_fault",
+            "rtd1_shorted",
+            "rtd3_open_fault",
+            "rtd3_shorted_fault",
+            "rtd3_shorted",
+            "rtd2_open_fault",
+            "rtd2_shorted_fault",
+            "rtd2_open_warn",
+            "rtd2_shorted_warn",
+            "rtd2_shorted",
+            "htc_fault",
+            "high_fixed_temp_fault",
+            "low_fixed_temp_fault",
+            "high_temp_fault",
+            "low_temp_fault",
+            "low_level_fault",
+            "high_temp_warn",
+            "low_temp_warn",
+            "low_level_warn",
+            "unit_faulted",
+        ]
+
+        actual_error_keys = [
+            status_key
+            for status_key in module.WaterBathStatus._fields
+            if module._is_error_key(status_key)
+        ]
+        assert actual_error_keys == expected_error_keys
 
 
 class TestAssertWaterBathStatusOk:
@@ -69,11 +96,11 @@ class TestAssertWaterBathStatusOk:
 
         mock_send_command.return_value = SerialPacket.from_bytes(
             # Actual byte string observed while water bath running
-            b"\xca\x00\x01\t\x05\x00\x00\x00\x0e\x08\xda"
+            b"\xca\x00\x01\x09\x05\x00\x00\x00\x0e\x08\xda"
         )
 
         status = _construct_water_bath_status(
-            col_led_on=True, compressor_on=True, pump_on=True, unit_on=True
+            cool_led_on=True, compressor_on=True, pump_on=True, unit_on=True
         )
 
         module.assert_water_bath_status_ok(sentinel.port)

@@ -54,26 +54,26 @@ WaterBathStatus = collections.namedtuple(
         "heat_led_flashing",
         "heat_led_on",
         "cool_led_flashing",
-        "col_led_on",  # (sic)
-        # # The Status response contains 3 unused bytes
+        "cool_led_on",
+        # # The Status response contains 3 unused bits
         # "Unused 1",
         # "Unused 2",
         # "Unused 3",
     ],
 )
 
-_UNUSED_SETTINGS_DATA_BYTES_COUNT = 3
+_UNUSED_SETTINGS_DATA_BITS_COUNT = 3
 
 
-def _parse_settings_data_bytes(status_response_bytes: bytes) -> WaterBathStatus:
+def _parse_status_data_bytes(status_response_bytes: bytes) -> WaterBathStatus:
     """ Parse data_bytes from the bath's response to a "Set On/Off Array" command
     """
     status_bits = [
-        bool(int(bit_char))
+        bool(int(bit_char))  # each "1" or "0" char to a number then a boolean
         for byte in status_response_bytes
-        for bit_char in "{0:08b}".format(byte)
+        for bit_char in "{0:08b}".format(byte)  # "{0:08b}" formats like "00101011"
     ]
-    return WaterBathStatus(*status_bits[:-_UNUSED_SETTINGS_DATA_BYTES_COUNT])
+    return WaterBathStatus(*status_bits[:-_UNUSED_SETTINGS_DATA_BITS_COUNT])
 
 
 def get_water_bath_status(port: str) -> WaterBathStatus:
@@ -87,15 +87,14 @@ def get_water_bath_status(port: str) -> WaterBathStatus:
         """
     response_packet = send_command(port, SerialPacket.from_command(READ_STATUS_COMMAND))
 
-    return _parse_settings_data_bytes(response_packet.data_bytes)
+    return _parse_status_data_bytes(response_packet.data_bytes)
 
 
 def _is_error_key(status_key: str):
     """ given a field name from WaterBathStatus, indicate whether it is something to worry about when it goes high """
-    status_key_lower = status_key.lower()
     return any(
-        error_marker in status_key_lower
-        for error_marker in ["fault", "high temp", "shorted", "faulted", "warn"]
+        error_marker in status_key
+        for error_marker in ["fault", "high temp", "shorted", "warn"]
     )
 
 
@@ -110,7 +109,9 @@ def _validate_status(status: WaterBathStatus) -> none:
     """
 
     errors = [
-        key for key, value in status._asdict().items() if _is_error_key(key) and value
+        status_key
+        for status_key, status_value in status._asdict().items()
+        if _is_error_key(status_key) and status_value
     ]
     if errors:
         raise WaterBathStatusError(errors)

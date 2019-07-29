@@ -22,6 +22,18 @@ class TestIsTemperatureEquilibrated:
         ]
         assert module._is_temperature_equilibrated(pd.DataFrame(test_data))
 
+    def test_has_enough_data_and_not_equilibrated(self):
+        now = datetime.datetime.now()
+        five_minutes_ago = now - datetime.timedelta(minutes=5)
+        test_data = [
+            {
+                _YSI_TEMPERATURE_FIELD_NAME: 10.0,
+                _TIMESTAMP_FIELD_NAME: five_minutes_ago,
+            },
+            {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
+        ]
+        assert not module._is_temperature_equilibrated(pd.DataFrame(test_data))
+
     def test_not_enough_data(self):
         now = datetime.datetime.now()
         four_minutes_ago = now - datetime.timedelta(minutes=4)
@@ -90,10 +102,16 @@ class TestWaitForTemperatureEquilibration:
         module.wait_for_temperature_equilibration(
             calibration_configuration, sentinel.setpoint, sentinel.loop_count
         )
+
         assert mock_is_temperature_equilibrated.call_count == len(temperature_readings)
 
-        # make sure it is checking for equilibration  on the full set of readings
-        final_sensor_data_log = mock_is_temperature_equilibrated.call_args[0][0]
+        # make sure it is checking for equilibration on the full set of readings
+        last_is_temperature_equilibrated_call_args = mock_is_temperature_equilibrated.call_args_list[
+            -1
+        ][
+            0
+        ]
+        final_sensor_data_log = last_is_temperature_equilibrated_call_args[0]
         row_count = final_sensor_data_log.shape[0]
         assert row_count == len(temperature_readings)
 
@@ -113,6 +131,7 @@ class TestWaitForTemperatureEquilibration:
         module.wait_for_temperature_equilibration(
             calibration_configuration, sentinel.setpoint, sentinel.loop_count
         )
+
         mock_collect_data_to_csv.assert_called_with(
             sentinel.setpoint,
             calibration_configuration,

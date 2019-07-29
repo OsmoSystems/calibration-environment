@@ -4,6 +4,7 @@ from unittest.mock import Mock, sentinel
 import pandas as pd
 import pytest
 
+from .data_logging import EquilibrationStatus
 from .equilibrate import _YSI_TEMPERATURE_FIELD_NAME, _TIMESTAMP_FIELD_NAME
 from . import equilibrate as module
 
@@ -95,3 +96,26 @@ class TestWaitForTemperatureEquilibration:
         final_sensor_data_log = mock_is_temperature_equilibrated.call_args[0][0]
         row_count = final_sensor_data_log.shape[0]
         assert row_count == len(temperature_readings)
+
+    def test_calls_collect_data_to_csv(self, mocker, mock_sleep):
+        temperature_readings = (sentinel.temperature_reading_one,)
+        is_temperature_equilibrated_sequence = (True,)
+
+        mock_collect_data_to_csv = self._mock_collect_data_to_csv(
+            mocker, temperature_readings
+        )
+        self._mock_is_temperature_equilibrated(
+            mocker, is_temperature_equilibrated_sequence
+        )
+
+        calibration_configuration = Mock(com_ports=sentinel.com_ports)
+
+        module.wait_for_temperature_equilibration(
+            calibration_configuration, sentinel.setpoint, sentinel.loop_count
+        )
+        mock_collect_data_to_csv.assert_called_with(
+            sentinel.setpoint,
+            calibration_configuration,
+            loop_count=sentinel.loop_count,
+            equilibration_status=EquilibrationStatus.TEMPERATURE,
+        )

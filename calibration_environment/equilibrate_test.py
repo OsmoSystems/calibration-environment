@@ -60,8 +60,8 @@ def mock_sleep(mocker):
 
 
 @pytest.fixture
-def mock_collect_equilibration_data_to_csv(mocker):
-    return mocker.patch.object(module, "collect_equilibration_data_to_csv")
+def mock_write_row_to_csv(mocker):
+    return mocker.patch.object(module, "write_row_to_csv")
 
 
 class TestWaitForTemperatureEquilibration:
@@ -81,7 +81,7 @@ class TestWaitForTemperatureEquilibration:
         )
 
     def test_checks_equilibration_on_all_readings(
-        self, mocker, mock_collect_equilibration_data_to_csv, mock_sleep
+        self, mocker, mock_write_row_to_csv, mock_sleep
     ):
         temperature_readings = (
             sentinel.temperature_reading_one,
@@ -104,9 +104,7 @@ class TestWaitForTemperatureEquilibration:
         row_count = final_sensor_data_log.shape[0]
         assert row_count == len(temperature_readings)
 
-    def test_calls_collect_equilibration_data_to_csv(
-        self, mocker, mock_collect_equilibration_data_to_csv, mock_sleep
-    ):
+    def test_calls_write_row_to_csv(self, mocker, mock_write_row_to_csv, mock_sleep):
         temperature_readings = (
             sentinel.temperature_reading_one,
             sentinel.temperature_reading_two,
@@ -120,6 +118,4 @@ class TestWaitForTemperatureEquilibration:
         calibration_configuration = Mock(com_ports=sentinel.com_ports)
 
         module.wait_for_temperature_equilibration(calibration_configuration)
-        assert mock_collect_equilibration_data_to_csv.call_count == len(
-            temperature_readings
-        )
+        assert mock_write_row_to_csv.call_count == len(temperature_readings)

@@ -1,3 +1,5 @@
+import csv
+
 import pytest
 import pandas as pd
 
@@ -87,10 +89,7 @@ class TestCollectDataToCsv:
         )
 
         module.collect_data_to_csv(
-            self.default_setpoint,
-            test_configuration,
-            loop_count=0,
-            write_headers_to_file=True,
+            self.default_setpoint, test_configuration, loop_count=0
         )
 
         # Use chunksize=1 to get a file reader that iterates over rows
@@ -107,23 +106,19 @@ class TestCollectDataToCsv:
             "timestamp",
         ]
 
-    def test_skips_saving_headers(self, mock_output_filepath, mock_get_all_sensor_data):
+    def test_only_writes_headers_once(
+        self, mock_output_filepath, mock_get_all_sensor_data
+    ):
         test_configuration = self.default_configuration._replace(
             output_csv_filepath=mock_output_filepath
         )
 
-        module.collect_data_to_csv(
-            self.default_setpoint,
-            test_configuration,
-            loop_count=0,
-            write_headers_to_file=False,
-        )
+        for _ in range(2):
+            module.collect_data_to_csv(
+                self.default_setpoint, test_configuration, loop_count=0
+            )
 
-        # Use chunksize=1 to get a file reader that iterates over rows
-        output_csv = pd.read_csv(mock_output_filepath, chunksize=1)
-        first_row = output_csv.__next__()
-
-        assert list(first_row) != [
+        expected_headers = [
             "loop count",
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
@@ -132,6 +127,15 @@ class TestCollectDataToCsv:
             "setpoint temperature (C)",
             "timestamp",
         ]
+
+        with open(mock_output_filepath) as csv_file:
+            output_csv_reader = csv.reader(csv_file)
+            # ensure header exists on first row
+            assert next(output_csv_reader) == expected_headers
+
+            # ensure no headers in rest of rows
+            for row in output_csv_reader:
+                assert row != expected_headers
 
     def test_saves_expected_data(self, mock_output_filepath, mock_get_all_sensor_data):
         test_setpoint = pd.Series(
@@ -150,9 +154,7 @@ class TestCollectDataToCsv:
             {"value 0": 0, "value 1": 1, "value 2": 2}
         )
 
-        module.collect_data_to_csv(
-            test_setpoint, test_configuration, loop_count=0, write_headers_to_file=True
-        )
+        module.collect_data_to_csv(test_setpoint, test_configuration, loop_count=0)
 
         expected_csv = pd.DataFrame(
             [

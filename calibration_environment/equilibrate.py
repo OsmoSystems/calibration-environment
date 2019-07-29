@@ -5,7 +5,7 @@ from time import sleep
 import pandas as pd
 
 from .configure import CalibrationConfiguration
-from .data_logging import collect_equilibration_data_to_csv, get_all_sensor_data
+from .data_logging import write_row_to_csv, get_all_sensor_data
 
 
 logger = logging.getLogger(__name__)
@@ -56,12 +56,14 @@ def wait_for_temperature_equilibration(
     while True:
         current_sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
         timestamp = pd.Series({_TIMESTAMP_FIELD_NAME: datetime.datetime.now()})
+        current_sensor_data_with_time = pd.concat([current_sensor_data, timestamp])
         sensor_data_log = sensor_data_log.append(
-            pd.concat([current_sensor_data, timestamp]), ignore_index=True
+            current_sensor_data_with_time, ignore_index=True
         )
 
-        collect_equilibration_data_to_csv(
-            calibration_configuration, current_sensor_data
+        write_row_to_csv(
+            calibration_configuration.equilibration_csv_filepath,
+            current_sensor_data_with_time,
         )
 
         if _is_temperature_equilibrated(sensor_data_log):

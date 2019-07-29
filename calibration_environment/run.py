@@ -39,7 +39,6 @@ def run(cli_args=None):
     water_bath.initialize(water_bath_com_port)
 
     loop_count = 0
-    write_headers_to_file = True
 
     while True:
 
@@ -79,12 +78,8 @@ def run(cli_args=None):
                 )
 
                 collect_data_to_csv(
-                    setpoint,
-                    calibration_configuration,
-                    loop_count=loop_count,
-                    write_headers_to_file=write_headers_to_file,
+                    setpoint, calibration_configuration, loop_count=loop_count
                 )
-                write_headers_to_file = False
 
         # Increment so we know which iteration we're on in the logs
         loop_count += 1

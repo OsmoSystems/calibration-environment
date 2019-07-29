@@ -7,12 +7,12 @@ _LOW_TEMPERATURE_LIMIT = 0
 _HIGH_TEMPERATURE_LIMIT = 100
 
 
-def get_temperature_validation_errors(setpoint_temperature: float) -> List:
+def get_temperature_setpoint_validation_errors(setpoint_temperature: float) -> List:
     """ Validate that a given temperature is attainable by the water bath.
         Args:
             setpoint_temperature: The desired setpoint temperature in C
         Returns:
-            Pandas series with boolean flags indicating errors with this temperature.
+            list of strings describing errors with this temperature.
     """
     validation_errors = {
         f"temperature < {_LOW_TEMPERATURE_LIMIT} C": setpoint_temperature

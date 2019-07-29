@@ -13,6 +13,8 @@ class TestGetTemperatureValidationErrors:
         ],
     )
     def test_returns_expected_validation_errors(self, temperature, expected_errors):
-        validation_errors = module.get_temperature_validation_errors(temperature)
+        validation_errors = module.get_temperature_setpoint_validation_errors(
+            temperature
+        )
 
         assert validation_errors == expected_errors

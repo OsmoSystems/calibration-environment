@@ -416,14 +416,13 @@ class TestAssertValidMix:
 
 class TestStartConstantFlowMix:
     @pytest.mark.parametrize(
-        "setpoint_gas_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01]
+        "setpoint_o2_fraction", [0.1, 0.21, 0.1111, math.pi * 0.01]
     )
     def test_get_source_gas_flow_rates_ppb_adds_to_one_billion(
-        self, setpoint_gas_o2_fraction
+        self, setpoint_o2_fraction
     ):
         n2_ppb, o2_ppb = module._get_source_gas_flow_rates_ppb(
-            o2_source_gas_o2_fraction=0.21,
-            setpoint_gas_o2_fraction=setpoint_gas_o2_fraction,
+            o2_source_gas_o2_fraction=0.21, setpoint_o2_fraction=setpoint_o2_fraction
         )
         assert n2_ppb + o2_ppb == module._ONE_BILLION
 
@@ -433,7 +432,7 @@ class TestStartConstantFlowMix:
         module.start_constant_flow_mix_with_retry(
             sentinel.port,
             setpoint_flow_rate_slpm=0,
-            setpoint_gas_o2_fraction=1,
+            setpoint_o2_fraction=1,
             o2_source_gas_o2_fraction=1,
         )
 
@@ -449,7 +448,7 @@ class TestStartConstantFlowMix:
         module.start_constant_flow_mix_with_retry(
             sentinel.port,
             setpoint_flow_rate_slpm=5,
-            setpoint_gas_o2_fraction=0.1,
+            setpoint_o2_fraction=0.1,
             o2_source_gas_o2_fraction=0.5,
         )
         mock_send_sequence.assert_called_with(
@@ -472,7 +471,7 @@ class TestStartConstantFlowMix:
         module.start_constant_flow_mix_with_retry(
             sentinel.port,
             setpoint_flow_rate_slpm=4.900000219837419237412374,
-            setpoint_gas_o2_fraction=0.100000111111111111111111111111111,
+            setpoint_o2_fraction=0.100000111111111111111111111111111,
             o2_source_gas_o2_fraction=0.5000003129384612384761234981723,
         )
         mock_send_sequence.assert_called_with(

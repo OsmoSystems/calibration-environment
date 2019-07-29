@@ -65,12 +65,7 @@ class TestGetAllSensorData:
 
 class TestCollectDataToCsv:
     default_setpoint = pd.Series(
-        {
-            "temperature": 15,
-            "hold_time": 300,
-            "flow_rate_slpm": 2.5,
-            "o2_target_gas_fraction": 0.2,
-        }
+        {"temperature": 15, "hold_time": 300, "flow_rate_slpm": 2.5, "o2_fraction": 0.2}
     )
     default_configuration = CalibrationConfiguration(
         setpoint_sequence_csv_filepath="experiment.csv",
@@ -99,9 +94,9 @@ class TestCollectDataToCsv:
             "equilibration status",
             "loop count",
             "o2 source gas fraction",
+            "setpoint O2 fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
-            "setpoint target gas fraction",
             "setpoint temperature (C)",
             "timestamp",
         ]
@@ -122,9 +117,9 @@ class TestCollectDataToCsv:
             "equilibration status",
             "loop count",
             "o2 source gas fraction",
+            "setpoint O2 fraction",
             "setpoint flow rate (SLPM)",
             "setpoint hold time seconds",
-            "setpoint target gas fraction",
             "setpoint temperature (C)",
             "timestamp",
         ]
@@ -144,7 +139,7 @@ class TestCollectDataToCsv:
                 "temperature": 15,
                 "hold_time": 300,
                 "flow_rate_slpm": 2.5,
-                "o2_target_gas_fraction": 0.2,
+                "o2_fraction": 0.2,
             }
         )
         test_configuration = self.default_configuration._replace(
@@ -163,9 +158,9 @@ class TestCollectDataToCsv:
                     "equilibration status": "equilibrated",
                     "loop count": 0,
                     "o2 source gas fraction": 0.23,
+                    "setpoint O2 fraction": 0.2,
                     "setpoint flow rate (SLPM)": 2.5,
                     "setpoint hold time seconds": 300.0,
-                    "setpoint target gas fraction": 0.2,
                     "setpoint temperature (C)": 15.0,
                     "value 0": 0,
                     "value 1": 1,

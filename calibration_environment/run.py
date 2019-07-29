@@ -20,6 +20,17 @@ logging.basicConfig(
 )
 
 
+def _shut_down(gas_mixer_com_port, water_bath_com_port):
+    """Turn off gas mixer and water bath"""
+    try:
+        gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
+    finally:
+        # Ensure that the water bath gets turned off even if the gas mixer errors
+        water_bath.send_settings_command_and_parse_response(
+            water_bath_com_port, unit_on_off=False
+        )
+
+
 def run(cli_args=None):
     start_date = datetime.now()
 
@@ -36,62 +47,63 @@ def run(cli_args=None):
     water_bath_com_port = calibration_configuration.com_ports["water_bath"]
     gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
 
-    water_bath.initialize(water_bath_com_port)
+    try:
+        water_bath.initialize(water_bath_com_port)
 
-    loop_count = 0
+        loop_count = 0
 
-    while True:
+        while True:
 
-        for _, setpoint in calibration_configuration.setpoints.iterrows():
+            for _, setpoint in calibration_configuration.setpoints.iterrows():
 
-            logging.info(f"Setting setpoint: {setpoint.to_dict()}")
-            water_bath.send_command_and_parse_response(
-                water_bath_com_port,
-                command_name="Set Setpoint",
-                data=setpoint["temperature"],
-            )
-            wait_for_temperature_equilibration(
-                calibration_configuration, setpoint, loop_count
-            )
-
-            # Set the gas mixer ratio
-            gas_mixer.start_constant_flow_mix_with_retry(
-                gas_mixer_com_port,
-                setpoint["flow_rate_slpm"],
-                setpoint["o2_target_gas_fraction"],
-                calibration_configuration.o2_source_gas_fraction,
-            )
-            wait_for_gas_mixer_equilibration(
-                calibration_configuration, setpoint, loop_count
-            )
-
-            # use pd.Timedelta here for type safety (handles numpy ints)
-            setpoint_hold_end_time = datetime.now() + pd.Timedelta(
-                seconds=setpoint["hold_time"]
-            )
-            next_data_collection_time = datetime.now()
-
-            while datetime.now() < setpoint_hold_end_time:
-                # Wait before collecting next datapoint
-                if datetime.now() < next_data_collection_time:
-                    time.sleep(0.1)  # No need to totally peg the CPU
-                    continue
-
-                next_data_collection_time = next_data_collection_time + timedelta(
-                    seconds=calibration_configuration.collection_interval
+                logging.info(f"Setting setpoint: {setpoint.to_dict()}")
+                water_bath.send_command_and_parse_response(
+                    water_bath_com_port,
+                    command_name="Set Setpoint",
+                    data=setpoint["temperature"],
+                )
+                wait_for_temperature_equilibration(
+                    calibration_configuration, setpoint, loop_count
                 )
 
-                collect_data_to_csv(
-                    setpoint, calibration_configuration, loop_count=loop_count
+                # Set the gas mixer ratio
+                gas_mixer.start_constant_flow_mix_with_retry(
+                    gas_mixer_com_port,
+                    setpoint["flow_rate_slpm"],
+                    setpoint["o2_fraction"],
+                    calibration_configuration.o2_source_gas_fraction,
+                )
+                wait_for_gas_mixer_equilibration(
+                    calibration_configuration, setpoint, loop_count
                 )
 
-        # Increment so we know which iteration we're on in the logs
-        loop_count += 1
+                # use pd.Timedelta here for type safety (handles numpy ints)
+                setpoint_hold_end_time = datetime.now() + pd.Timedelta(
+                    seconds=setpoint["hold_time"]
+                )
+                next_data_collection_time = datetime.now()
 
-        if not calibration_configuration.loop:
-            break
+                while datetime.now() < setpoint_hold_end_time:
+                    # Wait before collecting next datapoint
+                    if datetime.now() < next_data_collection_time:
+                        time.sleep(0.1)  # No need to totally peg the CPU
+                        continue
 
-    gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
-    water_bath.send_settings_command_and_parse_response(
-        water_bath_com_port, unit_on_off=False
-    )
+                    next_data_collection_time = next_data_collection_time + timedelta(
+                        seconds=calibration_configuration.collection_interval
+                    )
+
+                    collect_data_to_csv(
+                        setpoint, calibration_configuration, loop_count=loop_count
+                    )
+
+            # Increment so we know which iteration we're on in the logs
+            loop_count += 1
+
+            if not calibration_configuration.loop:
+                break
+
+    finally:
+        # Ensure that the gas mixer and the water bath get turned off even if something
+        # unexpected happens.
+        _shut_down(gas_mixer_com_port, water_bath_com_port)

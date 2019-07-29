@@ -50,7 +50,7 @@ def run(cli_args=None):
                 command_name="Set Setpoint",
                 data=setpoint["temperature"],
             )
-            wait_for_temperature_equilibration(calibration_configuration)
+            wait_for_temperature_equilibration(calibration_configuration, setpoint)
 
             # Set the gas mixer ratio
             gas_mixer.start_constant_flow_mix_with_retry(
@@ -59,7 +59,7 @@ def run(cli_args=None):
                 setpoint["o2_target_gas_fraction"],
                 calibration_configuration.o2_source_gas_fraction,
             )
-            wait_for_gas_mixer_equilibration(calibration_configuration)
+            wait_for_gas_mixer_equilibration(calibration_configuration, setpoint)
 
             # use pd.Timedelta here for type safety (handles numpy ints)
             setpoint_hold_end_time = datetime.now() + pd.Timedelta(

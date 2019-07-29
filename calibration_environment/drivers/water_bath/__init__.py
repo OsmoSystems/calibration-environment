@@ -1,7 +1,7 @@
 from .serial import send_command_and_parse_response  # noqa: F401 unused imports
-from .setpoint import (
+from .setpoint import (  # noqa: F401 unused imports
     get_temperature_setpoint_validation_errors,
-)  # noqa: F401 unused imports
+)
 from .settings import (  # noqa: F401 unused imports
     OnOffArraySettings,
     send_settings_command_and_parse_response,

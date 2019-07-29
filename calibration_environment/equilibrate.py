@@ -5,7 +5,7 @@ from time import sleep
 import pandas as pd
 
 from .configure import CalibrationConfiguration
-from .data_logging import write_row_to_csv, get_all_sensor_data
+from .data_logging import collect_data_to_csv, EquilibrationStatus
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def _is_temperature_equilibrated(sensor_data_log):
 
 
 def wait_for_temperature_equilibration(
-    calibration_configuration: CalibrationConfiguration
+    calibration_configuration: CalibrationConfiguration, setpoint: pd.Series
 ) -> None:
     """
     Returns once temperature has not changed by more than
@@ -48,23 +48,19 @@ def wait_for_temperature_equilibration(
 
     Args:
         calibration_configuration: CalibrationConfiguration object
+        setpoint: pd.Series of setpoint for logging
     """
     logger.info("waiting for water bath temperature equilibration")
 
     sensor_data_log = pd.DataFrame()
 
     while True:
-        current_sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
-        timestamp = pd.Series({_TIMESTAMP_FIELD_NAME: datetime.datetime.now()})
-        current_sensor_data_with_time = pd.concat([current_sensor_data, timestamp])
-        sensor_data_log = sensor_data_log.append(
-            current_sensor_data_with_time, ignore_index=True
+        current_sensor_data = collect_data_to_csv(
+            setpoint,
+            calibration_configuration.com_ports,
+            equilibration_status=EquilibrationStatus.TEMPERATURE,
         )
-
-        write_row_to_csv(
-            calibration_configuration.equilibration_csv_filepath,
-            current_sensor_data_with_time,
-        )
+        sensor_data_log = sensor_data_log.append(current_sensor_data, ignore_index=True)
 
         if _is_temperature_equilibrated(sensor_data_log):
             current_temperature = current_sensor_data[_YSI_TEMPERATURE_FIELD_NAME]
@@ -78,7 +74,7 @@ def wait_for_temperature_equilibration(
 
 
 def wait_for_gas_mixer_equilibration(
-    calibration_configuration: CalibrationConfiguration
+    calibration_configuration: CalibrationConfiguration, setpoint: pd.Series
 ) -> None:
     # TODO: Equilibration Procedure Software Implementation: Gas mixer
     # https://app.asana.com/0/819671808102776/1128578386488633/f

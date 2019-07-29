@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 
 import pandas as pd
 
@@ -6,6 +7,12 @@ from .configure import CalibrationConfiguration
 from .drivers import gas_mixer
 from .drivers import water_bath
 from .drivers import ysi
+
+
+class EquilibrationStatus(Enum):
+    EQUILIBRATED = "equilibrated"
+    TEMPERATURE = "waiting for temperature"
+    DO = "waiting for do"
 
 
 def get_all_sensor_data(com_ports):
@@ -39,7 +46,7 @@ def write_row_to_csv(csv_filepath: str, row: pd.Series) -> None:
 
         Args:
             csv_filepath: path to the csv file to append to
-            row: pd.Series used to generate the row and headers
+            row: dict representing the row
     """
     row_df = pd.DataFrame([row]).sort_index(
         axis=1
@@ -54,6 +61,7 @@ def collect_data_to_csv(
     setpoint: pd.Series,
     calibration_configuration: CalibrationConfiguration,
     loop_count: int = 0,
+    equilibration_status: EquilibrationStatus = None,
 ):
     """
         Read data from calibration environment sensors and write one row (plus headers
@@ -62,23 +70,30 @@ def collect_data_to_csv(
         Args:
             setpoint: A setpoint DataFrame row
             calibration_configuration: A CalibrationConfiguration object
-            loop_count: The current iteration of looping over the setpoint sequence file.
+            loop_count: The current iteration of looping over the setpoint sequence file
+            equilibration_status: an EquilibrationStatus representing the current equilibration state
+
+        Returns the dict of row data
     """
+
+    if equilibration_status is None:
+        equilibration_status = EquilibrationStatus.EQUILIBRATED
 
     # Read from each sensor and add to the DataFrame
     sensor_data = get_all_sensor_data(calibration_configuration.com_ports)
 
-    full_data = pd.Series(
-        {
-            "loop count": loop_count,
-            "setpoint temperature (C)": setpoint["temperature"],
-            "setpoint hold time seconds": setpoint["hold_time"],
-            "setpoint flow rate (SLPM)": setpoint["flow_rate_slpm"],
-            "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
-            "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
-            "timestamp": datetime.now(),
-            **dict(sensor_data),
-        }
-    )
+    full_data = {
+        "loop count": loop_count,
+        "equilibration status": equilibration_status.value,
+        "setpoint temperature (C)": setpoint["temperature"],
+        "setpoint hold time seconds": setpoint["hold_time"],
+        "setpoint flow rate (SLPM)": setpoint["flow_rate_slpm"],
+        "setpoint target gas fraction": setpoint["o2_target_gas_fraction"],
+        "o2 source gas fraction": calibration_configuration.o2_source_gas_fraction,
+        "timestamp": datetime.now(),
+        **dict(sensor_data),
+    }
 
     write_row_to_csv(calibration_configuration.output_csv_filepath, full_data)
+
+    return full_data

@@ -59,7 +59,6 @@ class TestRunCalibration:
         o2_source_gas_fraction=0.21,
         loop=False,
         output_csv_filepath="test.csv",
-        equilibration_csv_filepath="test_equilibration.csv",
         collection_interval=0.1,
     )
 
@@ -116,6 +115,7 @@ class TestRunCalibration:
         expected_csv = pd.DataFrame(
             [
                 {
+                    "equilibration status": "equilibrated",
                     "loop count": 0,
                     "o2 source gas fraction": 0.21,
                     "setpoint flow rate (SLPM)": 2.5,

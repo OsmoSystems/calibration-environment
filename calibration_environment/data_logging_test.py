@@ -79,7 +79,6 @@ class TestCollectDataToCsv:
         o2_source_gas_fraction=0.21,
         loop=False,
         output_csv_filepath="test.csv",
-        equilibration_csv_filepath="test.csv",
         collection_interval=0.1,
     )
 
@@ -97,6 +96,7 @@ class TestCollectDataToCsv:
         first_row = output_csv.__next__()
 
         assert list(first_row) == [
+            "equilibration status",
             "loop count",
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
@@ -119,6 +119,7 @@ class TestCollectDataToCsv:
             )
 
         expected_headers = [
+            "equilibration status",
             "loop count",
             "o2 source gas fraction",
             "setpoint flow rate (SLPM)",
@@ -159,6 +160,7 @@ class TestCollectDataToCsv:
         expected_csv = pd.DataFrame(
             [
                 {
+                    "equilibration status": "equilibrated",
                     "loop count": 0,
                     "o2 source gas fraction": 0.23,
                     "setpoint flow rate (SLPM)": 2.5,

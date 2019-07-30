@@ -10,6 +10,8 @@ WaterBathStatus = collections.namedtuple(
     "WaterBathStatus",
     [
         # Each of these is either True or False
+        # Names and ordering are from the manual:
+        # https://drive.google.com/file/d/1Tg-e1C8Ht8BE7AYzKVSqjw9bhWWxqKlz/edit?disco=AAAADTMD4oQ
         # Byte 1:
         "rtd1_open_fault",
         "rtd1_shorted_fault",

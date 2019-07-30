@@ -49,7 +49,6 @@ def run(cli_args=None):
     gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
 
     try:
-        check_status(calibration_configuration.com_ports)
         water_bath.initialize(water_bath_com_port)
 
         loop_count = 0

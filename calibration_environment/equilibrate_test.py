@@ -106,11 +106,9 @@ class TestWaitForTemperatureEquilibration:
         assert mock_is_temperature_equilibrated.call_count == len(temperature_readings)
 
         # make sure it is checking for equilibration on the full set of readings
-        last_is_temperature_equilibrated_call_args = mock_is_temperature_equilibrated.call_args_list[
-            -1
-        ][
-            0
-        ]
+        # fmt: off
+        last_is_temperature_equilibrated_call_args = mock_is_temperature_equilibrated.call_args_list[-1][0]
+        # fmt: on
         final_sensor_data_log = last_is_temperature_equilibrated_call_args[0]
         row_count = final_sensor_data_log.shape[0]
         assert row_count == len(temperature_readings)

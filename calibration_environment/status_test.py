@@ -52,7 +52,7 @@ class TestCheckStatus:
             module.check_status(MOCK_PORTS)
 
         mock_logger.exception.assert_has_calls(
-            [call("Gas mixer status check failed:")], any_order=True
+            [call("Gas mixer status check failed")], any_order=True
         )
         mock_logger.debug.assert_not_called()
 
@@ -76,7 +76,7 @@ class TestCheckStatus:
             module.check_status(MOCK_PORTS)
 
         # logger.exception should get called twice for each error: once to introduce it and once with the traceback
-        assert mock_logger.exception.call_count == 6
+        assert mock_logger.exception.call_count == 3
         mock_logger.debug.assert_not_called()
 
     def test_unexpected_exception_still_raises(self, mock_status_checks):

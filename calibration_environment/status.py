@@ -1,5 +1,4 @@
 import logging
-import traceback
 from typing import Dict, List
 
 import serial
@@ -21,8 +20,7 @@ def _get_and_log_any_exceptions(
     try:
         check_function()
     except expected_exceptions as e:
-        logger.exception(f"{title} status check failed:")
-        logger.exception(traceback.format_exc())
+        logger.exception(f"{title} status check failed")
         return [e]
     return []
 

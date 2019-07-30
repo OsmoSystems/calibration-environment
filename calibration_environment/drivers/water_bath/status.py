@@ -100,12 +100,12 @@ def _is_error_key(status_key: str):
 
 def _validate_status(status: WaterBathStatus) -> none:
     """
-
     Args:
         status: WaterBathStatus
-
     Returns:
-
+        None
+    Raises:
+        WaterBathStatusError with a list of error or warning flags raised in the water bath's status registers
     """
 
     errors = [

@@ -70,6 +70,7 @@ class TestIsErrorKey:
             "rtd2_open_warn",
             "rtd2_shorted_warn",
             "rtd2_shorted",
+            "refrig_high_temp",
             "htc_fault",
             "high_fixed_temp_fault",
             "low_fixed_temp_fault",

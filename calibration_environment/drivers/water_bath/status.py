@@ -1,8 +1,6 @@
 # Commands to get the status of the NESLAB RTE 17 temperature-controlled water bath & verify that it's OK
 import collections
 
-from numpy.distutils.fcompiler import none
-
 from calibration_environment.drivers.water_bath.constants import READ_STATUS_COMMAND
 from calibration_environment.drivers.water_bath.exceptions import WaterBathStatusError
 from calibration_environment.drivers.water_bath.serial import SerialPacket, send_command
@@ -90,15 +88,15 @@ def get_water_bath_status(port: str) -> WaterBathStatus:
     return _parse_status_data_bytes(response_packet.data_bytes)
 
 
+_ERROR_MARKERS = ["fault", "warn", "shorted", "refrig_high_temp"]
+
+
 def _is_error_key(status_key: str):
     """ given a field name from WaterBathStatus, indicate whether it is something to worry about when it goes high """
-    return any(
-        error_marker in status_key
-        for error_marker in ["fault", "high temp", "shorted", "warn"]
-    )
+    return any(error_marker in status_key for error_marker in _ERROR_MARKERS)
 
 
-def _validate_status(status: WaterBathStatus) -> none:
+def _validate_status(status: WaterBathStatus) -> None:
     """
     Args:
         status: WaterBathStatus

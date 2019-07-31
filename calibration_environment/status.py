@@ -3,7 +3,7 @@ from typing import Dict, List
 
 import serial
 
-from calibration_environment.drivers import gas_mixer, water_bath, ysi
+from calibration_environment.drivers import gas_mixer, water_bath
 
 
 logger = logging.getLogger(__name__)
@@ -41,36 +41,28 @@ def check_status(com_ports: Dict[str, str]) -> None:
         Any traceback encountered at exception level, or a success message at debug level
 
     """
-    exceptions = (
-        _get_and_log_any_exceptions(
-            "Gas mixer",
-            check_function=lambda: gas_mixer.assert_status_ok_with_retry(
-                com_ports["gas_mixer"]
-            ),
-            expected_exceptions=(
-                serial.SerialException,
-                gas_mixer.UnexpectedMixerResponse,
-                gas_mixer.GasMixerStatusError,
-            ),
-        )
-        + _get_and_log_any_exceptions(
-            "Water bath",
-            check_function=lambda: water_bath.assert_status_ok(com_ports["water_bath"]),
-            expected_exceptions=(
-                serial.SerialException,
-                water_bath.exceptions.InvalidResponse,
-                water_bath.exceptions.WaterBathStatusError,
-            ),
-        )
-        + _get_and_log_any_exceptions(
-            "YSI",
-            # There is no specific status check function for the YSI - just try getting some sensor data
-            check_function=lambda: ysi.get_sensor_reading_with_retry(
-                port=com_ports["ysi"], command=ysi.YSICommand.get_temp_c
-            ),
-            expected_exceptions=(serial.SerialException, ysi.InvalidYsiResponse),
-        )
+    gas_mixer_exceptions = _get_and_log_any_exceptions(
+        "Gas mixer",
+        check_function=lambda: gas_mixer.assert_status_ok_with_retry(
+            com_ports["gas_mixer"]
+        ),
+        expected_exceptions=(
+            serial.SerialException,
+            gas_mixer.UnexpectedMixerResponse,
+            gas_mixer.GasMixerStatusError,
+        ),
     )
+    water_bath_exceptions = _get_and_log_any_exceptions(
+        "Water bath",
+        check_function=lambda: water_bath.assert_status_ok(com_ports["water_bath"]),
+        expected_exceptions=(
+            serial.SerialException,
+            water_bath.exceptions.InvalidResponse,
+            water_bath.exceptions.WaterBathStatusError,
+        ),
+    )
+
+    exceptions = gas_mixer_exceptions + water_bath_exceptions
 
     if exceptions:
         raise CalibrationSequenceAbort(exceptions)

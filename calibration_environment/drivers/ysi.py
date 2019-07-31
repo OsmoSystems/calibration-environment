@@ -86,9 +86,9 @@ get_sensor_reading_with_retry = retry_on_exception(InvalidYsiResponse)(
 _ATMOSPHERIC_OXYGEN_FRACTION = 0.2095
 
 
-def _calculate_partial_pressure(do_percent_saturation, barometer_mmhg):
+def _calculate_partial_pressure(do_percent_saturation, barometric_pressure_mmhg):
     do_fraction_saturation = do_percent_saturation * 0.01
-    return do_fraction_saturation * _ATMOSPHERIC_OXYGEN_FRACTION * barometer_mmhg
+    return do_fraction_saturation * _ATMOSPHERIC_OXYGEN_FRACTION * barometric_pressure_mmhg
 
 
 def get_standard_sensor_values(port):
@@ -97,14 +97,14 @@ def get_standard_sensor_values(port):
     do_percent_saturation = get_sensor_reading_with_retry(
         port, YSICommand.get_do_pct_sat
     )
-    barometer_mmhg = get_sensor_reading_with_retry(
+    barometric_pressure_mmhg = get_sensor_reading_with_retry(
         port, YSICommand.get_barometric_pressure_mmhg
     )
-    do_mmhg = _calculate_partial_pressure(do_percent_saturation, barometer_mmhg)
+    do_mmhg = _calculate_partial_pressure(do_percent_saturation, barometric_pressure_mmhg)
 
     return pd.Series(
         {
-            "barometric pressure (mmHg)": barometer_mmhg,
+            "barometric pressure (mmHg)": barometric_pressure_mmhg,
             "DO (mg/L)": get_sensor_reading_with_retry(port, YSICommand.get_do_mg_l),
             "DO (% sat)": do_percent_saturation,
             "DO (mmHg)": do_mmhg,

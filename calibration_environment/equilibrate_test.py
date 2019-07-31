@@ -4,7 +4,6 @@ from unittest.mock import Mock, sentinel
 import pandas as pd
 import pytest
 
-from .data_logging import EquilibrationStatus
 from .equilibrate import _TIMESTAMP_FIELD_NAME, _YSI_TEMPERATURE_FIELD_NAME
 from . import equilibrate as module
 
@@ -78,9 +77,7 @@ def mock_sleep(mocker):
     return mocker.patch.object(module, "sleep")
 
 
-# TODO update this to test _wait_for_equilibration. add tests for wait_for_temperature_equilibration
-# and wait_for_do_equilibration.
-class TestWaitForTemperatureEquilibration:
+class TestWaitForEquilibration:
     @staticmethod
     def _mock_collect_data_to_csv(mocker, temperature_readings):
         sensor_data_sequence = [
@@ -110,8 +107,14 @@ class TestWaitForTemperatureEquilibration:
 
         calibration_configuration = Mock(com_ports=sentinel.com_ports)
 
-        module.wait_for_temperature_equilibration(
-            calibration_configuration, sentinel.setpoint, sentinel.loop_count
+        module._wait_for_equilibration(
+            calibration_configuration,
+            sentinel.setpoint,
+            sentinel.loop_count,
+            sentinel.equilibration_status,
+            sentinel.field_name,
+            sentinel.max_variation,
+            sentinel.min_stable_time,
         )
 
         assert mock_is_field_equilibrated.call_count == len(temperature_readings)
@@ -135,13 +138,19 @@ class TestWaitForTemperatureEquilibration:
 
         calibration_configuration = Mock(com_ports=sentinel.com_ports)
 
-        module.wait_for_temperature_equilibration(
-            calibration_configuration, sentinel.setpoint, sentinel.loop_count
+        module._wait_for_equilibration(
+            calibration_configuration,
+            sentinel.setpoint,
+            sentinel.loop_count,
+            sentinel.equilibration_status,
+            sentinel.field_name,
+            sentinel.max_variation,
+            sentinel.min_stable_time,
         )
 
         mock_collect_data_to_csv.assert_called_with(
             sentinel.setpoint,
             calibration_configuration,
             loop_count=sentinel.loop_count,
-            equilibration_status=EquilibrationStatus.TEMPERATURE,
+            equilibration_status=sentinel.equilibration_status,
         )

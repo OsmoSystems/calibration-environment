@@ -62,8 +62,8 @@ def _is_field_equilibrated(
 
 
 def _wait_for_equilibration(
-    setpoint: pd.Series,
     calibration_configuration: CalibrationConfiguration,
+    setpoint: pd.Series,
     loop_count: int,
     equilibration_status: EquilibrationStatus,
     field_name: str,
@@ -107,8 +107,8 @@ def wait_for_temperature_equilibration(
     logger.info("waiting for water bath temperature equilibration")
 
     sensor_data_log = _wait_for_equilibration(
-        setpoint,
         calibration_configuration,
+        setpoint,
         loop_count,
         EquilibrationStatus.TEMPERATURE,
         _YSI_TEMPERATURE_FIELD_NAME,
@@ -142,8 +142,8 @@ def wait_for_do_equilibration(
     logger.info("waiting for DO equilibration")
 
     sensor_data_log = _wait_for_equilibration(
-        setpoint,
         calibration_configuration,
+        setpoint,
         loop_count,
         EquilibrationStatus.TEMPERATURE,
         _YSI_DO_MMHG_FIELD_NAME,

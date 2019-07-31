@@ -13,15 +13,15 @@ logger = logging.getLogger(__name__)
 _TEMPERATURE_MAXIMUM_EQUILIBRATED_VARIATION = 0.1  # degrees C
 _TEMPERATURE_MINIMUM_STABLE_TIME = datetime.timedelta(minutes=5)
 
-_DO_MAXIMUM_EQUILIBRATED_VARIATION = 0.03  # mg/l
+_DO_MAXIMUM_EQUILIBRATED_VARIATION_MMHG = 0.5  # DO mmHg
 _DO_MINIMUM_STABLE_TIME = datetime.timedelta(minutes=5)
 
 _YSI_TEMPERATURE_FIELD_NAME = "YSI temperature (C)"
-_YSI_DO_MGL_FIELD_NAME = "YSI DO (mg/L)"
+_YSI_DO_MMHG_FIELD_NAME = "YSI DO (mmHg)"
 _TIMESTAMP_FIELD_NAME = "timestamp"
 
 
-def _is_field_equilibrated(sensor_data_log, field_name, max_variance, min_stable_time):
+def _is_field_equilibrated(sensor_data_log, field_name, max_variation, min_stable_time):
     oldest_timestamp = sensor_data_log[_TIMESTAMP_FIELD_NAME].min()
     newest_timestamp = sensor_data_log[_TIMESTAMP_FIELD_NAME].max()
 
@@ -39,7 +39,7 @@ def _is_field_equilibrated(sensor_data_log, field_name, max_variance, min_stable
 
     # round to get rid of floating point error
     variation = round(max_value - min_value, 5)
-    return variation <= max_variance
+    return variation <= max_variation
 
 
 def _wait_for_equilibration(
@@ -127,13 +127,13 @@ def wait_for_do_equilibration(
         calibration_configuration,
         loop_count,
         EquilibrationStatus.TEMPERATURE,
-        _YSI_DO_MGL_FIELD_NAME,
-        _DO_MAXIMUM_EQUILIBRATED_VARIATION,
+        _YSI_DO_MMHG_FIELD_NAME,
+        _DO_MAXIMUM_EQUILIBRATED_VARIATION_MMHG,
         _DO_MINIMUM_STABLE_TIME,
     )
 
-    current_do_mgl = sensor_data_log[_YSI_DO_MGL_FIELD_NAME].iloc[-1]
+    current_do_mgl = sensor_data_log[_YSI_DO_MMHG_FIELD_NAME].iloc[-1]
     logger.info(
         f"DO equilibrated (current DO level according to "
-        f'"{_YSI_DO_MGL_FIELD_NAME}": {current_do_mgl} mg/l)'
+        f'"{_YSI_DO_MMHG_FIELD_NAME}": {current_do_mgl} mmHg)'
     )

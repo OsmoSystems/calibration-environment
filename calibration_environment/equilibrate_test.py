@@ -12,7 +12,7 @@ from . import equilibrate as module
 class TestIsFieldEquilibrated:
     def test_success(self):
         field_name = sentinel.field_name
-        max_variance = 0.1
+        max_variation = 0.1
         min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         five_minutes_ago = now - datetime.timedelta(minutes=5)
@@ -22,12 +22,12 @@ class TestIsFieldEquilibrated:
         ]
 
         assert module._is_field_equilibrated(
-            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+            pd.DataFrame(test_data), field_name, max_variation, min_stable_time
         )
 
     def test_has_enough_data_and_not_equilibrated(self):
         field_name = sentinel.field_name
-        max_variance = 0.1
+        max_variation = 0.1
         min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         five_minutes_ago = now - datetime.timedelta(minutes=5)
@@ -37,12 +37,12 @@ class TestIsFieldEquilibrated:
         ]
 
         assert not module._is_field_equilibrated(
-            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+            pd.DataFrame(test_data), field_name, max_variation, min_stable_time
         )
 
     def test_not_enough_data(self):
         field_name = sentinel.field_name
-        max_variance = 0.1
+        max_variation = 0.1
         min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         four_minutes_ago = now - datetime.timedelta(minutes=4)
@@ -52,12 +52,12 @@ class TestIsFieldEquilibrated:
         ]
 
         assert not module._is_field_equilibrated(
-            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+            pd.DataFrame(test_data), field_name, max_variation, min_stable_time
         )
 
     def test_ignores_old_data(self):
         field_name = sentinel.field_name
-        max_variance = 0.1
+        max_variation = 0.1
         min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         four_minutes_ago = now - datetime.timedelta(minutes=4)
@@ -69,7 +69,7 @@ class TestIsFieldEquilibrated:
         ]
 
         assert module._is_field_equilibrated(
-            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+            pd.DataFrame(test_data), field_name, max_variation, min_stable_time
         )
 
 

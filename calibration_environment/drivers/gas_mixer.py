@@ -145,6 +145,11 @@ class UnexpectedMixerResponse(Exception):
     pass
 
 
+class GasMixerStatusError(Exception):
+    # Raised when a status validation is requested and one or more inputs has low feed pressure
+    pass
+
+
 def _assert_mixer_state(
     actual_response: str, expected_codes: List[_MixControllerStateCode]
 ) -> None:
@@ -249,6 +254,9 @@ def _assert_expected_units(mixer_status_response: MixerStatusResponse) -> None:
         )
 
 
+_ALARM_KEYWORD = "alarm"
+
+
 def _parse_mixer_status(mixer_status_str: str) -> pd.Series:
     """ Parse a mixer status string returned from a QMXS ("query mixer status") command """
     mixer_status_values = mixer_status_str.split()
@@ -266,13 +274,13 @@ def _parse_mixer_status(mixer_status_str: str) -> pd.Series:
             {
                 "flow rate (SLPM)": float(mixer_status_response.mix_flow),
                 "mix pressure (mmHg)": float(mixer_status_response.mix_pressure),
-                "low feed pressure alarm": _has_low_feed_pressure(
+                f"low feed pressure {_ALARM_KEYWORD}": _has_low_feed_pressure(
                     mixer_status_response.mix_alarm
                 ),
-                "low feed pressure alarm - N2": _has_low_feed_pressure(
+                f"low feed pressure {_ALARM_KEYWORD} - N2": _has_low_feed_pressure(
                     mixer_status_response.n2_status
                 ),
-                "low feed pressure alarm - O2 source gas": _has_low_feed_pressure(
+                f"low feed pressure {_ALARM_KEYWORD} - O2 source gas": _has_low_feed_pressure(
                     mixer_status_response.o2_source_gas_status
                 ),
                 "N2 fraction in mix": _parse_flow_fraction(
@@ -312,7 +320,7 @@ def _get_mixer_status(port: str) -> pd.Series:
         pd.Series of useful stuff. Index includes:
             flow rate (SLPM): total flow rate out of mixer,
             mix pressure (mmHg): output pressure measured at mixer,
-            low feed pressure alarm: whether any,
+            low feed pressure alarm: whether any of the inputs have insufficient feed pressure
             low feed pressure alarm - N2: feed pressure alarm specific to N2 input,
             low feed pressure alarm - O2 source gas: feed pressure alarm specific to O2 source gas input,
             N2 fraction in mix: Fraction of the mix that comes from the N2 source gas canister.
@@ -338,6 +346,37 @@ def _get_mixer_status(port: str) -> pd.Series:
 
 get_mixer_status_with_retry = retry_on_exception(UnexpectedMixerResponse)(
     _get_mixer_status
+)
+
+
+def _get_error_statuses(status: pd.Series) -> List[str]:
+    errors = [
+        status_key
+        for status_key, status_value in status.to_dict().items()
+        if status_value and _ALARM_KEYWORD in status_key
+    ]
+    return errors
+
+
+def _assert_status_ok(port: str) -> None:
+    """ Query mix module status and raise an exception if any inputs have insufficient pressure
+
+    Args:
+        port: serial port to connect to, e.g. COM19 on Windows and /dev/ttyUSB0 on linux
+    Returns:
+        None
+    Raises:
+        GasMixerStatusError with a list of error or warning flags if gas inputs have insufficient pressure
+    """
+
+    status = _get_mixer_status(port)
+    errors = _get_error_statuses(status)
+    if errors:
+        raise GasMixerStatusError(errors)
+
+
+assert_status_ok_with_retry = retry_on_exception(UnexpectedMixerResponse)(
+    _assert_status_ok
 )
 
 

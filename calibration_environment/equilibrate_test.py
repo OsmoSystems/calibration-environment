@@ -1,69 +1,76 @@
+import datetime
 from unittest.mock import Mock, sentinel
 
 import pandas as pd
 import pytest
 
 from .data_logging import EquilibrationStatus
-from .equilibrate import _YSI_TEMPERATURE_FIELD_NAME
+from .equilibrate import _TIMESTAMP_FIELD_NAME, _YSI_TEMPERATURE_FIELD_NAME
 from . import equilibrate as module
 
 
-# TODO update tests
-"""
-class TestIsTemperatureEquilibrated:
+class TestIsFieldEquilibrated:
     def test_success(self):
+        field_name = sentinel.field_name
+        max_variance = 0.1
+        min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         five_minutes_ago = now - datetime.timedelta(minutes=5)
         test_data = [
-            {
-                _YSI_TEMPERATURE_FIELD_NAME: 10.3,
-                _TIMESTAMP_FIELD_NAME: five_minutes_ago,
-            },
-            {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
+            {field_name: 10.3, _TIMESTAMP_FIELD_NAME: five_minutes_ago},
+            {field_name: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
-        assert module._is_temperature_equilibrated(pd.DataFrame(test_data))
+
+        assert module._is_field_equilibrated(
+            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+        )
 
     def test_has_enough_data_and_not_equilibrated(self):
+        field_name = sentinel.field_name
+        max_variance = 0.1
+        min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         five_minutes_ago = now - datetime.timedelta(minutes=5)
         test_data = [
-            {
-                _YSI_TEMPERATURE_FIELD_NAME: 10.0,
-                _TIMESTAMP_FIELD_NAME: five_minutes_ago,
-            },
-            {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
+            {field_name: 10.0, _TIMESTAMP_FIELD_NAME: five_minutes_ago},
+            {field_name: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
-        assert not module._is_temperature_equilibrated(pd.DataFrame(test_data))
+
+        assert not module._is_field_equilibrated(
+            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+        )
 
     def test_not_enough_data(self):
+        field_name = sentinel.field_name
+        max_variance = 0.1
+        min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         four_minutes_ago = now - datetime.timedelta(minutes=4)
         test_data = [
-            {
-                _YSI_TEMPERATURE_FIELD_NAME: 10.3,
-                _TIMESTAMP_FIELD_NAME: four_minutes_ago,
-            },
-            {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
+            {field_name: 10.3, _TIMESTAMP_FIELD_NAME: four_minutes_ago},
+            {field_name: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
-        assert not module._is_temperature_equilibrated(pd.DataFrame(test_data))
+
+        assert not module._is_field_equilibrated(
+            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+        )
 
     def test_ignores_old_data(self):
+        field_name = sentinel.field_name
+        max_variance = 0.1
+        min_stable_time = datetime.timedelta(minutes=5)
         now = datetime.datetime.now()
         four_minutes_ago = now - datetime.timedelta(minutes=4)
         over_five_minutes_ago = now - datetime.timedelta(minutes=10)
         test_data = [
-            {
-                _YSI_TEMPERATURE_FIELD_NAME: 4.3,
-                _TIMESTAMP_FIELD_NAME: over_five_minutes_ago,
-            },
-            {
-                _YSI_TEMPERATURE_FIELD_NAME: 10.3,
-                _TIMESTAMP_FIELD_NAME: four_minutes_ago,
-            },
-            {_YSI_TEMPERATURE_FIELD_NAME: 10.2, _TIMESTAMP_FIELD_NAME: now},
+            {field_name: 4.3, _TIMESTAMP_FIELD_NAME: over_five_minutes_ago},
+            {field_name: 10.3, _TIMESTAMP_FIELD_NAME: four_minutes_ago},
+            {field_name: 10.2, _TIMESTAMP_FIELD_NAME: now},
         ]
-        assert module._is_temperature_equilibrated(pd.DataFrame(test_data))
-"""
+
+        assert module._is_field_equilibrated(
+            pd.DataFrame(test_data), field_name, max_variance, min_stable_time
+        )
 
 
 @pytest.fixture
@@ -71,6 +78,8 @@ def mock_sleep(mocker):
     return mocker.patch.object(module, "sleep")
 
 
+# TODO update this to test _wait_for_equilibration. add tests for wait_for_temperature_equilibration
+# and wait_for_do_equilibration.
 class TestWaitForTemperatureEquilibration:
     @staticmethod
     def _mock_collect_data_to_csv(mocker, temperature_readings):

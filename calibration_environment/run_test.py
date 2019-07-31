@@ -28,6 +28,11 @@ def mock_get_all_sensor_data(mocker):
 
 
 @pytest.fixture
+def mock_check_status(mocker):
+    return mocker.patch.object(module, "check_status")
+
+
+@pytest.fixture
 def mock_get_calibration_configuration(mocker):
     return mocker.patch.object(module, "get_calibration_configuration")
 
@@ -62,7 +67,7 @@ class TestRunCalibration:
     default_configuration = CalibrationConfiguration(
         setpoint_sequence_csv_filepath="experiment.csv",
         setpoints=default_setpoints,
-        com_ports={"gas_mixer": "COM22", "water_bath": "COM21"},
+        com_ports={"ysi": "COM11", "gas_mixer": "COM22", "water_bath": "COM21"},
         o2_source_gas_fraction=0.21,
         loop=False,
         output_csv_filepath="test.csv",
@@ -74,6 +79,7 @@ class TestRunCalibration:
         mock_output_filepath,
         mock_drivers,
         mock_get_all_sensor_data,
+        mock_check_status,
         mock_get_calibration_configuration,
         mock_wait_for_equilibration,
     ):
@@ -115,6 +121,7 @@ class TestRunCalibration:
         mocker,
         mock_drivers,
         mock_get_all_sensor_data,
+        mock_check_status,
         mock_get_calibration_configuration,
         mock_wait_for_equilibration,
     ):
@@ -148,12 +155,31 @@ class TestRunCalibration:
 
         pd.testing.assert_frame_equal(expected_csv, output_csv)
 
+    def test_checks_status(
+        self,
+        mock_output_filepath,
+        mocker,
+        mock_drivers,
+        mock_get_all_sensor_data,
+        mock_check_status,
+        mock_get_calibration_configuration,
+        mock_wait_for_equilibration,
+    ):
+        mock_get_calibration_configuration.return_value = self.default_configuration._replace(
+            output_csv_filepath=mock_output_filepath
+        )
+
+        module.run([])
+
+        mock_check_status.assert_called()
+
     def test_shuts_down_at_end(
         self,
         mock_output_filepath,
         mocker,
         mock_drivers,
         mock_get_all_sensor_data,
+        mock_check_status,
         mock_get_calibration_configuration,
         mock_shut_down,
         mock_wait_for_equilibration,

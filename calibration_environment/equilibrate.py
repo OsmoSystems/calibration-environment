@@ -4,6 +4,7 @@ from time import sleep
 
 import pandas as pd
 
+from calibration_environment.status import check_status
 from .configure import CalibrationConfiguration
 from .data_logging import collect_data_to_csv, EquilibrationStatus
 
@@ -80,6 +81,8 @@ def _wait_for_equilibration(
             equilibration_status=equilibration_status,
         )
         sensor_data_log = sensor_data_log.append(current_sensor_data, ignore_index=True)
+
+        check_status(calibration_configuration.com_ports)
 
         if _is_field_equilibrated(
             sensor_data_log, field_name, max_variation, min_stable_time

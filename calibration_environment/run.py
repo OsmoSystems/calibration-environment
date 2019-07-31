@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from calibration_environment.status import check_status
 from .data_logging import collect_data_to_csv
 from .drivers import gas_mixer
 from .drivers import water_bath
@@ -93,6 +94,7 @@ def run(cli_args=None):
                     collect_data_to_csv(
                         setpoint, calibration_configuration, loop_count=loop_count
                     )
+                    check_status(calibration_configuration.com_ports)
 
             # Increment so we know which iteration we're on in the logs
             loop_count += 1

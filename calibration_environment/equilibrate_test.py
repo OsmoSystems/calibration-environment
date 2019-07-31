@@ -77,6 +77,11 @@ def mock_sleep(mocker):
     return mocker.patch.object(module, "sleep")
 
 
+@pytest.fixture
+def mock_check_status(mocker):
+    return mocker.patch.object(module, "check_status")
+
+
 class TestWaitForEquilibration:
     @staticmethod
     def _mock_collect_data_to_csv(mocker, temperature_readings):
@@ -93,7 +98,9 @@ class TestWaitForEquilibration:
             module, "_is_field_equilibrated", side_effect=return_sequence
         )
 
-    def test_checks_equilibration_on_all_readings(self, mocker, mock_sleep):
+    def test_checks_equilibration_on_all_readings(
+        self, mocker, mock_sleep, mock_check_status
+    ):
         temperature_readings = (
             sentinel.temperature_reading_one,
             sentinel.temperature_reading_two,
@@ -127,7 +134,9 @@ class TestWaitForEquilibration:
         row_count = final_sensor_data_log.shape[0]
         assert row_count == len(temperature_readings)
 
-    def test_calls_collect_data_to_csv(self, mocker, mock_sleep):
+    def test_calls_collect_data_to_csv_and_check_status(
+        self, mocker, mock_sleep, mock_check_status
+    ):
         temperature_readings = (sentinel.temperature_reading_one,)
         is_field_equilibrated_sequence = (True,)
 
@@ -154,3 +163,4 @@ class TestWaitForEquilibration:
             loop_count=sentinel.loop_count,
             equilibration_status=sentinel.equilibration_status,
         )
+        mock_check_status.assert_called_with(calibration_configuration.com_ports)

@@ -62,6 +62,8 @@ def run(cli_args=None):
                     data=setpoint["temperature"],
                 )
 
+                # skip waiting for temperature equilibration if temperature didn't change
+                # from last setpoint
                 if (
                     last_setpoint is None
                     or last_setpoint["temperature"] != setpoint["temperature"]

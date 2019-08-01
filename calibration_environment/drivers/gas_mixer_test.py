@@ -295,6 +295,54 @@ class TestGetMixerStatus:
             module._get_mixer_status(sentinel.port)
 
 
+class TestAssertStatusOk:
+    @pytest.mark.parametrize("alarm_raised", [True, False])
+    def test_raises_based_on_alarm_key(self, mocker, alarm_raised):
+        mocker.patch.object(
+            module,
+            "_get_mixer_status",
+            return_value=pd.Series(
+                {
+                    "Everything is OK": True,
+                    f"some type of {module._ALARM_KEYWORD}": alarm_raised,
+                }
+            ),
+        )
+
+        if alarm_raised:
+            with pytest.raises(module.GasMixerStatusError):
+                module._assert_status_ok(sentinel.port)
+        else:
+            module._assert_status_ok(sentinel.port)
+
+    def test_raises_exception_if_alarm_present(self, mocker):
+        mocker.patch.object(
+            module,
+            "_get_mixer_status",
+            return_value=pd.Series({f"some type of {module._ALARM_KEYWORD}": True}),
+        )
+
+        with pytest.raises(module.GasMixerStatusError):
+            module._assert_status_ok(sentinel.port)
+
+    def test_includes_multiple_error_keys_in_exception(self, mocker):
+        mocker.patch.object(
+            module,
+            "_get_mixer_status",
+            return_value=pd.Series(
+                {
+                    f"some type of {module._ALARM_KEYWORD}": True,
+                    f"some other type of {module._ALARM_KEYWORD}": True,
+                }
+            ),
+        )
+
+        expected_message = "['some type of alarm', 'some other type of alarm']"
+
+        with pytest.raises(module.GasMixerStatusError, match=expected_message):
+            module._assert_status_ok(sentinel.port)
+
+
 class TestParseGasIds:
     def test_parses_gas_ids(self):
         expected = pd.Series({"N2": 1, "O2 source gas": 4})

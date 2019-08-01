@@ -91,7 +91,7 @@ class TestIsErrorKey:
         assert actual_error_keys == expected_error_keys
 
 
-class TestAssertWaterBathStatusOk:
+class TestAssertStatusOk:
     def test_gets_status_and_then_validates_it(self, mocker, mock_send_command):
         mock_validate_status = mocker.patch.object(module, "_validate_status")
 
@@ -104,6 +104,6 @@ class TestAssertWaterBathStatusOk:
             cool_led_on=True, compressor_on=True, pump_on=True, unit_on=True
         )
 
-        module.assert_water_bath_status_ok(sentinel.port)
+        module.assert_status_ok(sentinel.port)
 
         mock_validate_status.assert_called_with(status)

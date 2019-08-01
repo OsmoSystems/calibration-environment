@@ -4,6 +4,7 @@ from time import sleep
 
 import pandas as pd
 
+from calibration_environment.status import check_status
 from .configure import CalibrationConfiguration
 from .data_logging import collect_data_to_csv, EquilibrationStatus
 
@@ -64,6 +65,7 @@ def wait_for_temperature_equilibration(
             equilibration_status=EquilibrationStatus.TEMPERATURE,
         )
         sensor_data_log = sensor_data_log.append(current_sensor_data, ignore_index=True)
+        check_status(calibration_configuration.com_ports)
 
         if _is_temperature_equilibrated(sensor_data_log):
             current_temperature = current_sensor_data[_YSI_TEMPERATURE_FIELD_NAME]

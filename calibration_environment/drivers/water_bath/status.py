@@ -117,7 +117,7 @@ def _validate_status(status: WaterBathStatus) -> None:
         raise WaterBathStatusError(errors)
 
 
-def assert_water_bath_status_ok(port: str) -> None:
+def assert_status_ok(port: str) -> None:
     """ Ensure that the water bath has no error statuses
 
         Args:

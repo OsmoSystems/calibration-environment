@@ -38,9 +38,20 @@ def mock_get_calibration_configuration(mocker):
 
 
 @pytest.fixture
-def mock_wait_for_equilibration(mocker):
-    mocker.patch.object(module, "wait_for_do_equilibration")
-    mocker.patch.object(module, "wait_for_temperature_equilibration")
+def mock_wait_for_temperature_equilibration(mocker):
+    return mocker.patch.object(module, "wait_for_temperature_equilibration")
+
+
+@pytest.fixture
+def mock_wait_for_do_equilibration(mocker):
+    return mocker.patch.object(module, "wait_for_do_equilibration")
+
+
+@pytest.fixture
+def mock_wait_for_equilibration(
+    mock_wait_for_temperature_equilibration, mock_wait_for_do_equilibration
+):
+    pass
 
 
 @pytest.fixture
@@ -224,6 +235,90 @@ class TestRunCalibration:
             module.run([])
 
         mock_shut_down.assert_called()
+
+    def test_calls_wait_for_temperature_equilibration_if_temperature_changed(
+        self,
+        mock_output_filepath,
+        mocker,
+        mock_drivers,
+        mock_check_status,
+        mock_get_all_sensor_data,
+        mock_get_calibration_configuration,
+        mock_wait_for_temperature_equilibration,
+        mock_wait_for_do_equilibration,
+    ):
+        hold_time = 0.1
+        collection_interval = hold_time  # collect one data point per setpoint
+        setpoints = pd.DataFrame(
+            [
+                {
+                    "temperature": 15,
+                    "flow_rate_slpm": 2.5,
+                    "o2_fraction": 50,
+                    "hold_time": hold_time,
+                },
+                {
+                    "temperature": 25,
+                    "flow_rate_slpm": 2.5,
+                    "o2_fraction": 50,
+                    "hold_time": hold_time,
+                },
+            ]
+        )
+
+        test_configuration = self.default_configuration._replace(
+            setpoints=setpoints,
+            output_csv_filepath=mock_output_filepath,
+            collection_interval=collection_interval,
+        )
+        mock_get_calibration_configuration.return_value = test_configuration
+
+        module.run([])
+
+        # ensure wait function called for both setpoints since setpoint temperature changed
+        assert mock_wait_for_temperature_equilibration.call_count == 2
+
+    def test_skips_wait_for_temperature_equilibration_if_no_temperature_change(
+        self,
+        mock_output_filepath,
+        mocker,
+        mock_drivers,
+        mock_check_status,
+        mock_get_all_sensor_data,
+        mock_get_calibration_configuration,
+        mock_wait_for_temperature_equilibration,
+        mock_wait_for_do_equilibration,
+    ):
+        hold_time = 0.1
+        collection_interval = hold_time  # collect one data point per setpoint
+        setpoints = pd.DataFrame(
+            [
+                {
+                    "temperature": 15,
+                    "flow_rate_slpm": 2.5,
+                    "o2_fraction": 50,
+                    "hold_time": hold_time,
+                },
+                {
+                    "temperature": 15,
+                    "flow_rate_slpm": 2.5,
+                    "o2_fraction": 50,
+                    "hold_time": hold_time,
+                },
+            ]
+        )
+
+        test_configuration = self.default_configuration._replace(
+            setpoints=setpoints,
+            output_csv_filepath=mock_output_filepath,
+            collection_interval=collection_interval,
+        )
+        mock_get_calibration_configuration.return_value = test_configuration
+
+        module.run([])
+
+        # ensure wait function called only for one setpoint since setpoint temperature didn't change
+        assert mock_wait_for_temperature_equilibration.call_count == 1
 
 
 class TestShutDown:

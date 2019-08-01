@@ -49,6 +49,7 @@ def run(cli_args=None):
         water_bath.initialize(water_bath_com_port)
 
         loop_count = 0
+        last_setpoint = None
 
         while True:
 
@@ -60,9 +61,14 @@ def run(cli_args=None):
                     command_name="Set Setpoint",
                     data=setpoint["temperature"],
                 )
-                wait_for_temperature_equilibration(
-                    calibration_configuration, setpoint, loop_count
-                )
+
+                if (
+                    last_setpoint is None
+                    or last_setpoint["temperature"] != setpoint["temperature"]
+                ):
+                    wait_for_temperature_equilibration(
+                        calibration_configuration, setpoint, loop_count
+                    )
 
                 # Set the gas mixer ratio
                 gas_mixer.start_constant_flow_mix_with_retry(
@@ -95,6 +101,8 @@ def run(cli_args=None):
                         setpoint, calibration_configuration, loop_count=loop_count
                     )
                     check_status(calibration_configuration.com_ports)
+
+                last_setpoint = setpoint
 
             # Increment so we know which iteration we're on in the logs
             loop_count += 1

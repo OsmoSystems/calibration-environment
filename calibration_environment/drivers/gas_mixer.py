@@ -151,7 +151,7 @@ class GasMixerStatusError(Exception):
 
 
 def _assert_mixer_state(
-    actual_response: str, expected_code: _MixControllerStateCode
+    actual_response: str, expected_codes: List[_MixControllerStateCode]
 ) -> None:
 
     # Response will look something like "A 3" where "3" is the code
@@ -163,9 +163,9 @@ def _assert_mixer_state(
         )
     )
 
-    if actual_code != expected_code:
+    if actual_code not in expected_codes:
         raise UnexpectedMixerResponse(
-            f"Expected {expected_code!s} but received {actual_code!s}"
+            f"Expected one of {expected_codes!s} but received {actual_code!s}"
         )
 
 
@@ -495,7 +495,16 @@ def _stop_flow(port: str) -> None:
     # mnemonic: "MXRS" = "mixer run state"
     command = f"{_DEVICE_ID} MXRS {_MixControllerRunStateRequestCode.stop_flow.value}"
     response = send_serial_command_str_and_parse_response(command, port)
-    _assert_mixer_state(response, _MixControllerStateCode.stopped_ok)
+    _assert_mixer_state(
+        response,
+        # Any type of "stopped" is OK.
+        [
+            _MixControllerStateCode.stopped_ok,
+            _MixControllerStateCode.stopped_error,
+            _MixControllerStateCode.stopped_configuration_error,
+            _MixControllerStateCode.stopped_error_silent,
+        ],
+    )
 
 
 stop_flow_with_retry = retry_on_exception(UnexpectedMixerResponse)(_stop_flow)

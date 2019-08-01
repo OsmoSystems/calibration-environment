@@ -9,10 +9,7 @@ from calibration_environment.status import check_status
 from .data_logging import collect_data_to_csv
 from .drivers import gas_mixer
 from .drivers import water_bath
-from .equilibrate import (
-    wait_for_temperature_equilibration,
-    wait_for_gas_mixer_equilibration,
-)
+from .equilibrate import wait_for_temperature_equilibration, wait_for_do_equilibration
 from .configure import get_calibration_configuration
 
 logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
@@ -74,7 +71,7 @@ def run(cli_args=None):
                     setpoint["o2_fraction"],
                     calibration_configuration.o2_source_gas_fraction,
                 )
-                wait_for_gas_mixer_equilibration(
+                wait_for_do_equilibration(
                     calibration_configuration, setpoint, loop_count
                 )
 

@@ -39,7 +39,7 @@ def mock_get_calibration_configuration(mocker):
 
 @pytest.fixture
 def mock_wait_for_equilibration(mocker):
-    mocker.patch.object(module, "wait_for_gas_mixer_equilibration")
+    mocker.patch.object(module, "wait_for_do_equilibration")
     mocker.patch.object(module, "wait_for_temperature_equilibration")
 
 

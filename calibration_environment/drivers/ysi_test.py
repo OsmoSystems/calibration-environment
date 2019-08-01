@@ -69,3 +69,32 @@ class TestGetSensorReading:
             response_terminator=module._YSI_RESPONSE_TERMINATOR,
             timeout=1,
         )
+
+
+class TestGetStandardSensorValues:
+    def test_reports_partial_pressure(self, mocker):
+        do_percent_saturation = 20.0
+        barometric_pressure_mmhg = 700.0
+        expected_do_partial_pressure_mmhg = 29.33
+        do_partial_pressure_field_name = "DO (mmHg)"
+
+        def fake_get_sensor_reading_with_retry(port, command):
+            if command == module.YSICommand.get_do_pct_sat:
+                return do_percent_saturation
+            elif command == module.YSICommand.get_barometric_pressure_mmhg:
+                return barometric_pressure_mmhg
+            return sentinel.other_sensor_reading
+
+        mocker.patch.object(
+            module,
+            "get_sensor_reading_with_retry",
+            side_effect=fake_get_sensor_reading_with_retry,
+        )
+
+        sensor_values = module.get_standard_sensor_values(sentinel.port)
+
+        assert do_partial_pressure_field_name in sensor_values
+        assert (
+            sensor_values[do_partial_pressure_field_name]
+            == expected_do_partial_pressure_mmhg
+        )

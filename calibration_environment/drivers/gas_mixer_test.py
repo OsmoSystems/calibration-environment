@@ -383,7 +383,7 @@ class TestAssertMixerState:
     def test_mixer_state_mismatch_provides_helpful_error(self):
         expected_code = [module._MixControllerStateCode.stopped_ok]
         actual_code_number = 2  # still mixing
-        with pytest.raises(module.UnexpectedMixerResponse, match="alarm"):
+        with pytest.raises(module.UnexpectedMixerResponse, match="mixing"):
             module._assert_mixer_state(f"A {actual_code_number}", expected_code)
 
 

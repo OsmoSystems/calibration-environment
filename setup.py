@@ -12,6 +12,6 @@ setup(
     entry_points={
         "console_scripts": ["run_calibration = calibration_environment.run:run"]
     },
-    install_requires=["backoff", "pandas", "pyserial"],
+    install_requires=["backoff", "pandas", "pyserial", "plotly>=4"],
     include_package_data=True,
 )

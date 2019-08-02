@@ -49,11 +49,13 @@ def run(cli_args=None):
         water_bath.initialize(water_bath_com_port)
 
         loop_count = 0
-        last_setpoint = None
 
         while True:
 
-            for _, setpoint in calibration_configuration.setpoints.iterrows():
+            for i, setpoint in calibration_configuration.setpoints.iterrows():
+                last_setpoint = (
+                    calibration_configuration.setpoints.iloc[i - 1] if i > 0 else None
+                )
 
                 logging.info(f"Setting setpoint: {setpoint.to_dict()}")
                 water_bath.send_command_and_parse_response(
@@ -103,8 +105,6 @@ def run(cli_args=None):
                         setpoint, calibration_configuration, loop_count=loop_count
                     )
                     check_status(calibration_configuration.com_ports)
-
-                last_setpoint = setpoint
 
             # Increment so we know which iteration we're on in the logs
             loop_count += 1

@@ -148,7 +148,7 @@ def wait_for_do_equilibration(
         calibration_configuration,
         setpoint,
         loop_count,
-        EquilibrationStatus.TEMPERATURE,
+        EquilibrationStatus.DO,
         _YSI_DO_MMHG_FIELD_NAME,
         _DO_MAXIMUM_EQUILIBRATED_VARIATION_MMHG,
         _DO_MINIMUM_STABLE_TIME,

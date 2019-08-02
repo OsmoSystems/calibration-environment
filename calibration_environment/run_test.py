@@ -38,9 +38,20 @@ def mock_get_calibration_configuration(mocker):
 
 
 @pytest.fixture
-def mock_wait_for_equilibration(mocker):
-    mocker.patch.object(module, "wait_for_do_equilibration")
-    mocker.patch.object(module, "wait_for_temperature_equilibration")
+def mock_wait_for_temperature_equilibration(mocker):
+    return mocker.patch.object(module, "wait_for_temperature_equilibration")
+
+
+@pytest.fixture
+def mock_wait_for_do_equilibration(mocker):
+    return mocker.patch.object(module, "wait_for_do_equilibration")
+
+
+@pytest.fixture
+def mock_wait_for_equilibration(
+    mock_wait_for_temperature_equilibration, mock_wait_for_do_equilibration
+):
+    pass
 
 
 @pytest.fixture
@@ -224,6 +235,54 @@ class TestRunCalibration:
             module.run([])
 
         mock_shut_down.assert_called()
+
+    @pytest.mark.parametrize(
+        "setpoint_temperatures,expected_wait_call_count",
+        (
+            ((15, 25), 2),  # called for each setpoint because temperature changed
+            ((15, 15), 1),  # only one call since temperature didn't change
+        ),
+    )
+    def test_calls_wait_for_temperature_equilibration_only_if_temperature_changed(
+        self,
+        mock_output_filepath,
+        mocker,
+        mock_drivers,
+        mock_check_status,
+        mock_get_all_sensor_data,
+        mock_get_calibration_configuration,
+        mock_wait_for_temperature_equilibration,
+        mock_wait_for_do_equilibration,
+        setpoint_temperatures,
+        expected_wait_call_count,
+    ):
+        hold_time = 0.1
+        collection_interval = hold_time  # collect one data point per setpoint
+        setpoints = pd.DataFrame(
+            [
+                {
+                    "temperature": setpoint_temperature,
+                    "flow_rate_slpm": sentinel.flow_rate_slpm,
+                    "o2_fraction": sentinel.o2_fraction,
+                    "hold_time": hold_time,
+                }
+                for setpoint_temperature in setpoint_temperatures
+            ]
+        )
+
+        test_configuration = self.default_configuration._replace(
+            setpoints=setpoints,
+            output_csv_filepath=mock_output_filepath,
+            collection_interval=collection_interval,
+        )
+        mock_get_calibration_configuration.return_value = test_configuration
+
+        module.run([])
+
+        assert (
+            mock_wait_for_temperature_equilibration.call_count
+            == expected_wait_call_count
+        )
 
 
 class TestShutDown:

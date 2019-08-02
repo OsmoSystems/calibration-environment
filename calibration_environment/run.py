@@ -52,7 +52,10 @@ def run(cli_args=None):
 
         while True:
 
-            for _, setpoint in calibration_configuration.setpoints.iterrows():
+            for i, setpoint in calibration_configuration.setpoints.iterrows():
+                last_setpoint = (
+                    calibration_configuration.setpoints.iloc[i - 1] if i > 0 else None
+                )
 
                 logging.info(f"Setting setpoint: {setpoint.to_dict()}")
                 water_bath.send_command_and_parse_response(
@@ -60,9 +63,16 @@ def run(cli_args=None):
                     command_name="Set Setpoint",
                     data=setpoint["temperature"],
                 )
-                wait_for_temperature_equilibration(
-                    calibration_configuration, setpoint, loop_count
-                )
+
+                # skip waiting for temperature equilibration if temperature didn't change
+                # from last setpoint
+                if (
+                    last_setpoint is None
+                    or last_setpoint["temperature"] != setpoint["temperature"]
+                ):
+                    wait_for_temperature_equilibration(
+                        calibration_configuration, setpoint, loop_count
+                    )
 
                 # Set the gas mixer ratio
                 gas_mixer.start_constant_flow_mix_with_retry(

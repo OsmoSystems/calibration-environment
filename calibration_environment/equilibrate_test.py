@@ -4,7 +4,12 @@ from unittest.mock import Mock, sentinel
 import pandas as pd
 import pytest
 
-from .equilibrate import _TIMESTAMP_FIELD_NAME, _YSI_TEMPERATURE_FIELD_NAME
+from .data_logging import EquilibrationStatus
+from .equilibrate import (
+    _TIMESTAMP_FIELD_NAME,
+    _YSI_DO_MMHG_FIELD_NAME,
+    _YSI_TEMPERATURE_FIELD_NAME,
+)
 from . import equilibrate as module
 
 
@@ -164,3 +169,51 @@ class TestWaitForEquilibration:
             equilibration_status=sentinel.equilibration_status,
         )
         mock_check_status.assert_called_with(calibration_configuration.com_ports)
+
+
+class TestWaitForTemperatureEquilibration:
+    def test_calls_wait_for_equilibration(self, mocker):
+        sensor_data = pd.DataFrame(
+            {_YSI_TEMPERATURE_FIELD_NAME: [sentinel.ysi_temperature_value]}
+        )
+        mock_wait_for_equilibration = mocker.patch.object(
+            module, "_wait_for_equilibration", return_value=sensor_data
+        )
+
+        module.wait_for_temperature_equilibration(
+            sentinel.calibration_configuration, sentinel.setpoint, sentinel.loop_count
+        )
+
+        mock_wait_for_equilibration.assert_called_with(
+            sentinel.calibration_configuration,
+            sentinel.setpoint,
+            sentinel.loop_count,
+            EquilibrationStatus.TEMPERATURE,
+            _YSI_TEMPERATURE_FIELD_NAME,
+            module._TEMPERATURE_MAXIMUM_EQUILIBRATED_VARIATION,
+            module._TEMPERATURE_MINIMUM_STABLE_TIME,
+        )
+
+
+class TestWaitForDoEquilibration:
+    def test_calls_wait_for_equilibration(self, mocker):
+        sensor_data = pd.DataFrame(
+            {_YSI_DO_MMHG_FIELD_NAME: [sentinel.ysi_do_mmhg_value]}
+        )
+        mock_wait_for_equilibration = mocker.patch.object(
+            module, "_wait_for_equilibration", return_value=sensor_data
+        )
+
+        module.wait_for_do_equilibration(
+            sentinel.calibration_configuration, sentinel.setpoint, sentinel.loop_count
+        )
+
+        mock_wait_for_equilibration.assert_called_with(
+            sentinel.calibration_configuration,
+            sentinel.setpoint,
+            sentinel.loop_count,
+            EquilibrationStatus.DO,
+            _YSI_DO_MMHG_FIELD_NAME,
+            module._DO_MAXIMUM_EQUILIBRATED_VARIATION_MMHG,
+            module._DO_MINIMUM_STABLE_TIME,
+        )

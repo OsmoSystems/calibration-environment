@@ -20,8 +20,8 @@ def generate_ordered_setpoints(
     min_do_mmhg: float,
     max_do_mmhg: float,
     do_setpoint_count: int,
-    start_high_temperature: bool,
-    start_high_do: bool,
+    start_high_temperature: bool = False,
+    start_high_do: bool = True,
 ) -> pd.DataFrame:
     """ Create a DataFrame of all the combinations of DO + temperature in the provided parameters, ordered efficiently.
     Efficient ordering minimizes equilibration time. In our efficient setpoint ordering:
@@ -39,7 +39,7 @@ def generate_ordered_setpoints(
              DO mmHg values are approximate because total pressure of the chamber may fluctuate, and we only actually
              control the percentage of oxygen present.
         do_setpoint_count: number of distinct DO values to include
-        start_high_temperature: if True, hit the highest temperature setpoint first, and vice versa (default=False).
+        start_high_temperature: if True (default=False), hit the highest temperature setpoint first, and vice versa.
         start_high_do: if True (default), start sweep with a high-DO setpoint (to more quickly equilibrate if
             environment is starting at atmospheric conditions). start_high_do=False produces a sequence that will
             equilibrate more quickly if the calibration environment already has low DO (e.g. if you just ran a sequence

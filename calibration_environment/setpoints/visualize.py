@@ -3,7 +3,7 @@ from plotly import express as px
 
 from calibration_environment.constants import (
     OXYGEN_FRACTION_IN_ATMOSPHERE,
-    ATMOSPHERIC_PRESURE_MMHG,
+    ATMOSPHERIC_PRESSURE_MMHG,
 )
 
 
@@ -26,7 +26,7 @@ def visualize_setpoints_sequence(setpoints, title, **line_kwargs):
         range_x=[
             0,
             OXYGEN_FRACTION_IN_ATMOSPHERE
-            * ATMOSPHERIC_PRESURE_MMHG
+            * ATMOSPHERIC_PRESSURE_MMHG
             * x_axis_upper_padding,
         ],
         text=text,

@@ -37,7 +37,7 @@ class TestGenerateOrderedSetpoints:
             start_high_do=start_high_do,
             start_high_temperature=start_high_temperature,
         )
-        print(actual_setpoints)
+
         pd.testing.assert_frame_equal(
             actual_setpoints[["temperature", "DO (approx mmHg)"]], expected_setpoints
         )

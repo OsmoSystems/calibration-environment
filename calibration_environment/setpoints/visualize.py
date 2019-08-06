@@ -1,5 +1,3 @@
-from copy import copy
-
 import pandas as pd
 from plotly import express as px
 
@@ -18,12 +16,19 @@ def visualize_setpoints_sequence(setpoints, title, **line_kwargs):
         mode = "lines+markers"
         text = None  # type: ignore
 
+    x_axis_upper_padding = 1.1
+
     return px.line(
         setpoints,
         title=title,
         x="DO (approx mmHg)",
         y="temperature",
-        range_x=[0, OXYGEN_FRACTION_IN_ATMOSPHERE * ATMOSPHERIC_PRESURE_MMHG * 1.1],
+        range_x=[
+            0,
+            OXYGEN_FRACTION_IN_ATMOSPHERE
+            * ATMOSPHERIC_PRESURE_MMHG
+            * x_axis_upper_padding,
+        ],
         text=text,
         **line_kwargs
     ).update_traces(
@@ -36,16 +41,14 @@ def visualize_setpoints_sequence(setpoints, title, **line_kwargs):
 
 
 def visualize_multiple_setpoints_sequences(setpoints_sequences, title):
-    setpoints_sequences_copies = {
-        name: copy(sequence) for name, sequence in setpoints_sequences.items()
-    }
-
-    for name, sequence_copy in setpoints_sequences_copies.items():
-        sequence_copy["sequence_name"] = name
-        sequence_copy["setpoint order"] = sequence_copy.index
-
-    all_setpoints = pd.concat(setpoints_sequences_copies.values(), sort=False)
+    all_setpoints = pd.concat(
+        [
+            sequence.assign(**{"sequence": name, "setpoint order": sequence.index})
+            for name, sequence in setpoints_sequences.items()
+        ],
+        sort=False,
+    )
 
     return visualize_setpoints_sequence(
-        all_setpoints, title, line_group="sequence_name", color="sequence_name"
+        all_setpoints, title, line_group="sequence", color="sequence"
     )

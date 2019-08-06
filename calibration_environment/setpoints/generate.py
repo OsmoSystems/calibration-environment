@@ -55,21 +55,19 @@ def generate_ordered_setpoints(
     temperature_setpoints_low_to_high = np.linspace(
         min_temperature, max_temperature, temperatures_setpoint_count
     )
-    temperature_setpoints = (
-        reversed(temperature_setpoints_low_to_high)
-        if start_high_temperature
-        else temperature_setpoints_low_to_high
+    temperature_setpoints = sorted(
+        temperature_setpoints_low_to_high, reverse=start_high_temperature
     )
 
     do_setpoints = np.linspace(min_do_mmhg, max_do_mmhg, do_setpoint_count)
 
     # Every other temperature will have reversed DO setpoints to minimize equilibration time as we progress from one
     # temperature to the next. Set those up:
-    do_setpoints_for_even_indexed_temperatures = list(
-        list(reversed(do_setpoints)) if start_high_do else do_setpoints
+    do_setpoints_for_even_indexed_temperatures = sorted(
+        do_setpoints, reverse=start_high_do
     )
-    do_setpoints_for_odd_indexed_temperatures = list(
-        do_setpoints if start_high_do else reversed(do_setpoints)
+    do_setpoints_for_odd_indexed_temperatures = sorted(
+        do_setpoints, reverse=not start_high_do
     )
 
     setpoints = pd.DataFrame(
@@ -131,8 +129,7 @@ def create_sweep(
     Efficient ordering minimizes equilibration time. In our efficient setpoint ordering:
     * temperatures are in monotonically increasing or decreasing order (based on the start_high_temperature param)
     * DO also changes monotonically within each temperature.
-        * where one temperature starts with high DO, the next temperature will start with the same high DO value,
-            to avoid unnecessary equilibration time.
+        * when one temperature starts with high DO, the next temperature will start with low DO, and vice versa
 
     Args:
         min_temperature: lowest temperature setpoint to hit
@@ -144,7 +141,7 @@ def create_sweep(
              control the percentage of oxygen present.
         do_setpoint_count: number of distinct DO values to include
         o2_source_gas_o2_fraction: fraction of oxygen in oxygen source gas for this run
-        start_high_temperature: if True, hit the highest temperature setpoint first, and vice versa (default=False).
+        start_high_temperature: if True (default=False), hit the highest temperature setpoint first, and vice versa.
         start_high_do: if True (default), start sweep with a high-DO setpoint (to more quickly equilibrate if
             environment is starting at atmospheric conditions). start_high_do=False produces a sequence that will
             equilibrate more quickly if the calibration environment already has low DO (e.g. if you just ran a sequence

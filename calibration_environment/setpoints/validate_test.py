@@ -1,6 +1,6 @@
 import pandas as pd
 
-from . import setpoints as module
+from . import validate as module
 
 
 class TestValidateSetpoints:

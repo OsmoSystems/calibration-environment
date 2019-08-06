@@ -12,11 +12,6 @@ from .drivers import water_bath
 from .equilibrate import wait_for_temperature_equilibration, wait_for_do_equilibration
 from .configure import get_calibration_configuration
 
-logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
-logging.basicConfig(
-    level=logging.INFO, format=logging_format, handlers=[logging.StreamHandler()]
-)
-
 
 def _shut_down(gas_mixer_com_port, water_bath_com_port):
     """Turn off gas mixer and water bath"""
@@ -31,6 +26,11 @@ def _shut_down(gas_mixer_com_port, water_bath_com_port):
 
 
 def run(cli_args=None):
+    logging_format = "%(asctime)s [%(levelname)s]--- %(message)s"
+    logging.basicConfig(
+        level=logging.INFO, format=logging_format, handlers=[logging.StreamHandler()]
+    )
+
     start_date = datetime.now()
 
     if cli_args is None:

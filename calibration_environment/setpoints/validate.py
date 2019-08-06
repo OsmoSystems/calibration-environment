@@ -1,7 +1,9 @@
 import pandas as pd
 
-from .drivers.gas_mixer import get_mix_validation_errors
-from .drivers.water_bath import get_temperature_setpoint_validation_errors
+from calibration_environment.drivers.gas_mixer import get_mix_validation_errors
+from calibration_environment.drivers.water_bath import (
+    get_temperature_setpoint_validation_errors,
+)
 
 
 def _get_setpoint_validation_errors(
@@ -35,8 +37,3 @@ def get_validation_errors(
 
     errors_present_selector = setpoint_errors.apply(lambda errors: len(errors) > 0)
     return setpoint_errors[errors_present_selector]
-
-
-def read_setpoint_sequence_file(sequence_csv_filepath: str) -> pd.DataFrame:
-    setpoints = pd.read_csv(sequence_csv_filepath)
-    return setpoints

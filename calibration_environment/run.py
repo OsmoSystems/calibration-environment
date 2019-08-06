@@ -20,6 +20,7 @@ logging.basicConfig(
 
 def _shut_down(gas_mixer_com_port, water_bath_com_port):
     """Turn off gas mixer and water bath"""
+    logging.info("Shutting down gas mixer and temperature controlled water bath.")
     try:
         gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
     finally:

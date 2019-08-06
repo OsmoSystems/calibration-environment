@@ -1,102 +1,46 @@
 import pandas as pd
 import pytest
 
-from calibration_environment.setpoints.constants import AVERAGE_SYSTEM_PRESSURE_MMHG
 from . import generate as module
 
 
-class TestSortDoWithinTemperature:
-    unsorted_setpoints = pd.DataFrame(
-        {"temperature": 5, "o2_fraction": [1, 3, 5, 7, 6, 4, 2, 0]}
+class TestGenerateOrderedSetpoints:
+    @pytest.mark.parametrize(
+        "start_high_do, start_high_temperature",
+        [(False, True), (True, False), (True, True), (False, False)],
     )
-
-    def test_sorts_ascending_when_it_should(self):
-        actual = module._sort_do_within_temperature(
-            self.unsorted_setpoints, temperatures_with_ascending_do={2, 5, 7}
-        )
-        expected = actual.sort_values("temperature", ascending=True)
-        pd.testing.assert_frame_equal(actual, expected)
-
-    def test_sorts_descending_when_it_should(self):
-        actual = module._sort_do_within_temperature(
-            self.unsorted_setpoints, temperatures_with_ascending_do={90000}
-        )
-        expected = actual.sort_values("temperature", ascending=False)
-        pd.testing.assert_frame_equal(actual, expected)
-
-    def test_sort_ascending_works_as_expected(self):
-        actual = module._sort_do_within_temperature(
-            self.unsorted_setpoints, temperatures_with_ascending_do={5}
-        )["o2_fraction"]
-
-        assert actual.to_list() == [0, 1, 2, 3, 4, 5, 6, 7]
-
-
-class TestGetUnorderedSetpoints:
-    def test_creates_setpoint_dataframe_with_appropriate_do_and_temperature_values(
-        self
+    def test_generates_setpoints_with_ordered_temperature_and_do(
+        self, start_high_do, start_high_temperature
     ):
+        expected_do_mmhg_high_first = [0.4, 0.2, 0.2, 0.4, 0.4, 0.2]
+        expected_temperature_high_first = [1, 1, 0.5, 0.5, 0, 0]
+
         expected_setpoints = pd.DataFrame(
             {
-                "temperature": [0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 1, 1, 1, 1],
-                "DO (mmHg)": [10, 11, 12, 13] * 3,
+                "temperature": expected_temperature_high_first
+                if start_high_temperature
+                else reversed(expected_temperature_high_first),
+                "DO (approx mmHg)": expected_do_mmhg_high_first
+                if start_high_do
+                else reversed(expected_do_mmhg_high_first),
             },
             dtype=float,
         )
 
-        expected_setpoints["o2_fraction"] = (
-            expected_setpoints["DO (mmHg)"] / AVERAGE_SYSTEM_PRESSURE_MMHG
-        )
-
-        actual_setpoints = module.get_unordered_setpoints(
+        actual_setpoints = module.generate_ordered_setpoints(
             min_temperature=0,
             max_temperature=1,
             temperatures_setpoint_count=3,
-            min_do_mmhg=10,
-            max_do_mmhg=13,
-            DO_setpoint_count=4,
-        )
-
-        pd.testing.assert_frame_equal(actual_setpoints, expected_setpoints)
-
-
-class TestOrderSetpoints:
-    @pytest.mark.parametrize(
-        "start_high_do, start_high_temp, expected_temperatures, expected_o2_fractions",
-        [
-            (False, True, [1, 1, 0, 0], [0.2, 0.4, 0.3, 0.1]),
-            (True, False, [0, 0, 1, 1], [0.3, 0.1, 0.2, 0.4]),
-            (True, True, [1, 1, 0, 0], [0.4, 0.2, 0.1, 0.3]),
-            (False, False, [0, 0, 1, 1], [0.1, 0.3, 0.4, 0.2]),
-        ],
-    )
-    def test_orders_temperature_and_do(
-        self,
-        start_high_do,
-        start_high_temp,
-        expected_temperatures,
-        expected_o2_fractions,
-    ):
-        input_setpoints = pd.DataFrame(
-            {"temperature": [0, 1, 0, 1], "o2_fraction": [0.1, 0.2, 0.3, 0.4]},
-            dtype=float,
-        )
-
-        expected_setpoints = pd.DataFrame(
-            {
-                "temperature": expected_temperatures,
-                "o2_fraction": expected_o2_fractions,
-            },
-            dtype=float,
-        )
-
-        actual_setpoints = module.order_setpoints(
-            input_setpoints,
+            min_do_mmhg=0.2,
+            max_do_mmhg=0.4,
+            do_setpoint_count=2,
             start_high_do=start_high_do,
-            start_high_temp=start_high_temp,
+            start_high_temperature=start_high_temperature,
         )
-
-        pd.testing.assert_frame_equal(actual_setpoints, expected_setpoints)
+        print(actual_setpoints)
+        pd.testing.assert_frame_equal(
+            actual_setpoints[["temperature", "DO (approx mmHg)"]], expected_setpoints
+        )
 
 
 class TestRemoveInvalidPoints:
@@ -124,7 +68,7 @@ class TestCreateSweep:
             "temperature",
             "flow_rate_slpm",
             "o2_fraction",
-            "DO (mmHg)",
+            "DO (approx mmHg)",
             "hold_time",
         }
 
@@ -137,7 +81,7 @@ class TestCreateSweep:
             do_setpoint_count=n_dos,
             o2_source_gas_o2_fraction=0.5,
             hold_time_seconds=10,
-            start_high_temp=True,
+            start_high_temperature=True,
             start_high_do=False,
         )
 

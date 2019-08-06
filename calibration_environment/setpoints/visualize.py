@@ -21,7 +21,7 @@ def visualize_setpoints_sequence(setpoints, title, **line_kwargs):
     return px.line(
         setpoints,
         title=title,
-        x="DO (mmHg)",
+        x="DO (approx mmHg)",
         y="temperature",
         range_x=[0, OXYGEN_FRACTION_IN_ATMOSPHERE * ATMOSPHERIC_PRESURE_MMHG * 1.1],
         text=text,

@@ -22,7 +22,9 @@ def _shut_down(gas_mixer_com_port, water_bath_com_port):
         logging.info("Gas mixer flow stopped.")
     finally:
         # Ensure that the water bath gets turned off even if the gas mixer errors
-        logging.info("Shutting down water bath...")
+        logging.info("Shutting down water bath in 5 seconds...")
+        time.sleep(5)
+        logging.info("Shutting down water bath.")
         water_bath.send_settings_command_and_parse_response(
             water_bath_com_port, unit_on_off=False
         )

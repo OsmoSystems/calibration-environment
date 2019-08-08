@@ -17,12 +17,21 @@ def _shut_down(gas_mixer_com_port, water_bath_com_port):
     """Turn off gas mixer and water bath"""
     logging.info("Shutting down gas mixer and temperature controlled water bath.")
     try:
+        logging.info("Shutting down gas mixer...")
         gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
+        logging.info("Gas mixer flow stopped.")
     finally:
         # Ensure that the water bath gets turned off even if the gas mixer errors
+
+        # If the water bath was _just_ turned on immediately before this, turning it off doesn't work unless we wait
+        # a few seconds.
+        logging.info("Giving the water bath 5 seconds before we shut it off...")
+        time.sleep(5)
+        logging.info("Shutting down water bath.")
         water_bath.send_settings_command_and_parse_response(
             water_bath_com_port, unit_on_off=False
         )
+        logging.info("Water bath shut down.")
 
 
 def run(cli_args=None):

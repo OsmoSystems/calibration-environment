@@ -16,6 +16,7 @@ setup(
     install_requires=[
         "backoff",
         "pandas",
+        "paramiko",
         "plotly>=4",
         "pyserial"
     ],

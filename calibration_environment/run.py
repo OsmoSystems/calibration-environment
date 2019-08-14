@@ -11,6 +11,7 @@ from .drivers import gas_mixer
 from .drivers import water_bath
 from .equilibrate import wait_for_temperature_equilibration, wait_for_do_equilibration
 from .configure import get_calibration_configuration
+import cosmobot
 
 
 def _shut_down(gas_mixer_com_port, water_bath_com_port):
@@ -54,6 +55,10 @@ def run(cli_args=None):
 
     water_bath_com_port = calibration_configuration.com_ports["water_bath"]
     gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
+
+    cosmobot_ssh_client = cosmobot.get_ssh_client(
+        calibration_configuration.cosmobot_hostname
+    )
 
     try:
         water_bath.initialize(water_bath_com_port)
@@ -101,6 +106,13 @@ def run(cli_args=None):
                 )
                 next_data_collection_time = datetime.now()
 
+                # start cosmobot image capture
+                cosmobot.run_experiment(
+                    cosmobot_ssh_client,
+                    calibration_configuration.cosmobot_experiment_name,
+                    setpoint["hold_time"],
+                )
+
                 while datetime.now() < setpoint_hold_end_time:
                     # Wait before collecting next datapoint
                     if datetime.now() < next_data_collection_time:
@@ -123,6 +135,11 @@ def run(cli_args=None):
                 break
 
     finally:
+        try:
+            cosmobot_ssh_client.close()
+        except Exception as e:
+            logging.exception(e)
+
         # Ensure that the gas mixer and the water bath get turned off even if something
         # unexpected happens.
         _shut_down(gas_mixer_com_port, water_bath_com_port)

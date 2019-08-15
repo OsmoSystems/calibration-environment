@@ -192,7 +192,7 @@ class TestRunCalibration:
         module.run([])
 
         mock_post_slack_message.assert_called_with(
-            "Calibration routine complete!", mention_channel=False
+            "Calibration routine ended successfully!", mention_channel=False
         )
 
     @pytest.mark.parametrize(
@@ -216,14 +216,33 @@ class TestRunCalibration:
             "Mock error"
         )
 
-        # The expectation is that the Exception is raised and bubbled up, but the code
-        # in the finally block still gets called, so the system still gets shut down
+        # The expectation is that any Exception is raised, caught, then re-raised,
+        # so the system gets shut down, but the error still gets bubbled up
         with pytest.raises(Exception):
             module.run([])
 
         mock_shut_down.assert_called()
         mock_post_slack_message.assert_called_with(
-            "Calibration routine errored! Error: Mock error", mention_channel=True
+            "Calibration routine ended with error! Error: Mock error",
+            mention_channel=True,
+        )
+
+    def test_shuts_down_and_notifies_after_keyboard_interrupt(
+        self,
+        mock_all_integrations,
+        mock_wait_for_temperature_equilibration,
+        mock_shut_down,
+        mock_post_slack_message,
+    ):
+        # Pick an arbitrary function to have a KeyboardInterrput
+        mock_wait_for_temperature_equilibration.side_effect = KeyboardInterrupt()
+
+        # The expectation is that the KeyboardInterrupt is raised and caught
+        module.run([])
+
+        mock_shut_down.assert_called()
+        mock_post_slack_message.assert_called_with(
+            "Calibration routine ended by user.", mention_channel=False
         )
 
     @pytest.mark.parametrize(

@@ -24,6 +24,10 @@ class TestParseArgs:
             "COM3",
             "--collection-interval",
             "50",
+            "--cosmobot-hostname",
+            "cosmohostname",
+            "--cosmobot-experiment-name",
+            "experiment1",
         ]
 
         expected_args_out = {
@@ -34,6 +38,8 @@ class TestParseArgs:
             "water_bath_com_port": "COM2",
             "ysi_com_port": "COM3",
             "collection_interval": 50,
+            "cosmobot_experiment_name": "experiment1",
+            "cosmobot_hostname": "cosmohostname",
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -49,6 +55,8 @@ class TestParseArgs:
             "water_bath_com_port": "COM21",
             "ysi_com_port": "COM11",
             "collection_interval": 60,
+            "cosmobot_hostname": None,
+            "cosmobot_experiment_name": None,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -88,6 +96,9 @@ class TestGetCalibrationConfiguration:
             loop=True,
             output_csv_filepath=sentinel.filepath,
             collection_interval=60,
+            cosmobot_experiment_name=None,
+            cosmobot_hostname=None,
+            capture_images=False,
         )
 
         actual_configuration = module.get_calibration_configuration(args_in, start_date)

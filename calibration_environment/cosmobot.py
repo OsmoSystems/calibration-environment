@@ -61,3 +61,31 @@ def run_experiment(
     )
 
     return ExperimentStreams(*ssh_client.exec_command(run_experiment_command))
+
+
+class BadExitStatus(Exception):
+    def __init__(self, exit_status):
+        super().__init__(
+            "Received bad exit status {exit_status} from run_experiment on cosmobot"
+        )
+
+
+def wait_for_exit(experiment_streams: ExperimentStreams) -> None:
+    stdout = experiment_streams.stdout
+    exit_status = stdout.channel.recv_exit_status()
+
+    if exit_status != 0:
+        # TODO raise different error for -1 vs. >0? not sure why we would ever receive -1 (maybe lost connection)
+        raise BadExitStatus(exit_status)
+
+
+# TODO delete this function if we don't use it
+def ensure_no_bad_exit(experiment_streams: ExperimentStreams) -> None:
+    # raise an exception if there was a bad exit on the experiment
+    stdout = experiment_streams.stdout
+    if stdout.channel.exit_status_ready():
+        exit_status = stdout.channel.recv_exit_status()
+
+    if exit_status != 0:
+        # TODO raise different error for -1 vs. >0?
+        raise BadExitStatus(exit_status)

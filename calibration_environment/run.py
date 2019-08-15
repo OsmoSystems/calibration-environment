@@ -11,7 +11,7 @@ from .drivers import gas_mixer
 from .drivers import water_bath
 from .equilibrate import wait_for_temperature_equilibration, wait_for_do_equilibration
 from .configure import get_calibration_configuration
-import cosmobot
+from . import cosmobot
 
 
 def _shut_down(gas_mixer_com_port, water_bath_com_port):
@@ -56,9 +56,10 @@ def run(cli_args=None):
     water_bath_com_port = calibration_configuration.com_ports["water_bath"]
     gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
 
-    cosmobot_ssh_client = cosmobot.get_ssh_client(
-        calibration_configuration.cosmobot_hostname
-    )
+    if calibration_configuration.capture_images:
+        cosmobot_ssh_client = cosmobot.get_ssh_client(
+            calibration_configuration.cosmobot_hostname
+        )
 
     try:
         water_bath.initialize(water_bath_com_port)
@@ -106,12 +107,13 @@ def run(cli_args=None):
                 )
                 next_data_collection_time = datetime.now()
 
-                # start cosmobot image capture
-                cosmobot.run_experiment(
-                    cosmobot_ssh_client,
-                    calibration_configuration.cosmobot_experiment_name,
-                    setpoint["hold_time"],
-                )
+                if calibration_configuration.capture_images:
+                    # start cosmobot image capture
+                    run_experiment_streams = cosmobot.run_experiment(
+                        cosmobot_ssh_client,
+                        calibration_configuration.cosmobot_experiment_name,
+                        setpoint["hold_time"],
+                    )
 
                 while datetime.now() < setpoint_hold_end_time:
                     # Wait before collecting next datapoint
@@ -127,6 +129,14 @@ def run(cli_args=None):
                         setpoint, calibration_configuration, loop_count=loop_count
                     )
                     check_status(calibration_configuration.com_ports)
+
+                if calibration_configuration.capture_images:
+                    # wait for run_experiment to complete (raises if it has a bad exit code)
+                    logging.info(
+                        "Waiting for run_experiment on cosmobot to complete..."
+                    )
+                    cosmobot.wait_for_exit(run_experiment_streams)
+                    logging.info("Cosmobot run_experiment process completed")
 
             # Increment so we know which iteration we're on in the logs
             loop_count += 1

@@ -83,6 +83,9 @@ class TestRunCalibration:
         loop=False,
         output_csv_filepath="test.csv",
         collection_interval=0.1,
+        cosmobot_experiment_name=None,
+        cosmobot_hostname=None,
+        capture_images=False,
     )
 
     def test_collects_data_at_configured_rate(

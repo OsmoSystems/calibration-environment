@@ -8,7 +8,8 @@ DEFAULT_SLACK_CHANNEL = "#technical"
 
 def post_slack_message(message: str, mention_channel: bool = False):
     """ Posts a message as the "Calibration Environment Bot" using the "CalibrationNotify" app
-        (https://api.slack.com/apps/AMF4BTRM4)
+    (https://api.slack.com/apps/AMF4BTRM4)
+    Pulls the slack API token from the SLACK_API_TOKEN environment variable.
 
     Args:
         message: The message contents

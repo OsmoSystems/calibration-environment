@@ -1,5 +1,5 @@
 import time
-from unittest.mock import sentinel
+from unittest.mock import sentinel, call
 
 import pytest
 import pandas as pd
@@ -191,8 +191,11 @@ class TestRunCalibration:
     ):
         module.run([])
 
-        mock_post_slack_message.assert_called_with(
-            "Calibration routine ended successfully!", mention_channel=False
+        mock_post_slack_message.assert_has_calls(
+            [
+                call("Calibration routine ended successfully!"),
+                call("Calibration system shut down."),
+            ]
         )
 
     @pytest.mark.parametrize(
@@ -216,15 +219,20 @@ class TestRunCalibration:
             "Mock error"
         )
 
-        # The expectation is that any Exception is raised, caught, then re-raised,
-        # so the system gets shut down, but the error still gets bubbled up
+        # The expectation is that the system gets shut down, but the error is re-raised
+        # so that it gets bubbled up
         with pytest.raises(Exception):
             module.run([])
 
         mock_shut_down.assert_called()
-        mock_post_slack_message.assert_called_with(
-            "Calibration routine ended with error! Error: Mock error",
-            mention_channel=True,
+        mock_post_slack_message.assert_has_calls(
+            [
+                call(
+                    "Calibration routine ended with error! Mock error",
+                    mention_channel=True,
+                ),
+                call("Calibration system shut down."),
+            ]
         )
 
     def test_shuts_down_and_notifies_after_keyboard_interrupt(
@@ -237,12 +245,17 @@ class TestRunCalibration:
         # Pick an arbitrary function to have a KeyboardInterrput
         mock_wait_for_temperature_equilibration.side_effect = KeyboardInterrupt()
 
-        # The expectation is that the KeyboardInterrupt is raised and caught
-        module.run([])
+        # The expectation is that the system gets shut down, but the error is re-raised
+        # so that it gets bubbled up
+        with pytest.raises(KeyboardInterrupt):
+            module.run([])
 
         mock_shut_down.assert_called()
-        mock_post_slack_message.assert_called_with(
-            "Calibration routine ended by user.", mention_channel=False
+        mock_post_slack_message.assert_has_calls(
+            [
+                call("Calibration routine ended by user."),
+                call("Calibration system shut down."),
+            ]
         )
 
     @pytest.mark.parametrize(

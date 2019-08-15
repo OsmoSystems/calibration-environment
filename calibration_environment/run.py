@@ -122,23 +122,22 @@ def run(cli_args=None):
             if not calibration_configuration.loop:
                 break
 
-        _shut_down(gas_mixer_com_port, water_bath_com_port)
-        post_slack_message(
-            "Calibration routine ended successfully!", mention_channel=False
-        )
-
-    except KeyboardInterrupt:
-        # Ensure that the gas mixer and the water bath get turned off even if Ctrl-C'd
-        _shut_down(gas_mixer_com_port, water_bath_com_port)
-        post_slack_message(f"Calibration routine ended by user.", mention_channel=False)
+    # Catch interrupts and unexpected errors so we can notify on slack.
+    # Re-raise so that we still get the stack traces
+    except KeyboardInterrupt as e:
+        post_slack_message("Calibration routine ended by user.")
+        raise e
 
     except Exception as e:
-        # Ensure that the gas mixer and the water bath get turned off even if something
-        # unexpected happens.
-        _shut_down(gas_mixer_com_port, water_bath_com_port)
         post_slack_message(
-            f"Calibration routine ended with error! Error: {e}", mention_channel=True
+            f"Calibration routine ended with error! {e}", mention_channel=True
         )
+        raise e
 
-        # Re-raise the error for visibility
-        raise (e)
+    else:
+        post_slack_message("Calibration routine ended successfully!")
+
+    # Ensure gas mixer and water bath get turned off regardless of any unexpected errors
+    finally:
+        _shut_down(gas_mixer_com_port, water_bath_com_port)
+        post_slack_message("Calibration system shut down.")

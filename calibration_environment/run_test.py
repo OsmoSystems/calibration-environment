@@ -1,3 +1,4 @@
+import time
 from unittest.mock import sentinel
 
 import pytest
@@ -33,11 +34,6 @@ def mock_check_status(mocker):
 
 
 @pytest.fixture
-def mock_get_calibration_configuration(mocker):
-    return mocker.patch.object(module, "get_calibration_configuration")
-
-
-@pytest.fixture
 def mock_wait_for_temperature_equilibration(mocker):
     return mocker.patch.object(module, "wait_for_temperature_equilibration")
 
@@ -64,35 +60,55 @@ def mock_shut_down(mocker):
     return mocker.patch.object(module, "_shut_down")
 
 
-class TestRunCalibration:
-    default_setpoints = pd.DataFrame(
-        [
-            {
-                "temperature": 15,
-                "flow_rate_slpm": 2.5,
-                "o2_fraction": 50,
-                "hold_time": 0.1,
-            }
-        ]
-    )
-    default_configuration = CalibrationConfiguration(
-        setpoint_sequence_csv_filepath="experiment.csv",
-        setpoints=default_setpoints,
-        com_ports={"ysi": "COM11", "gas_mixer": "COM22", "water_bath": "COM21"},
-        o2_source_gas_fraction=0.21,
-        loop=False,
-        output_csv_filepath="test.csv",
-        collection_interval=0.1,
+DEFAULT_SETPOINTS = pd.DataFrame(
+    [{"temperature": 15, "flow_rate_slpm": 2.5, "o2_fraction": 50, "hold_time": 0.01}]
+)
+
+
+DEFAULT_CONFIGURATION = CalibrationConfiguration(
+    setpoint_sequence_csv_filepath="experiment.csv",
+    setpoints=DEFAULT_SETPOINTS,
+    com_ports={"ysi": "COM11", "gas_mixer": "COM22", "water_bath": "COM21"},
+    o2_source_gas_fraction=0.21,
+    loop=False,
+    output_csv_filepath="test.csv",
+    collection_interval=0.01,
+)
+
+
+@pytest.fixture
+def mock_get_calibration_configuration(mocker, mock_output_filepath):
+    mock_calibration_configuration = DEFAULT_CONFIGURATION._replace(
+        output_csv_filepath=mock_output_filepath
     )
 
+    return mocker.patch.object(
+        module,
+        "get_calibration_configuration",
+        return_value=mock_calibration_configuration,
+    )
+
+
+@pytest.fixture
+def mock_all_integrations(
+    mock_drivers,
+    mock_get_all_sensor_data,
+    mock_get_calibration_configuration,
+    mock_check_status,
+    mock_wait_for_equilibration,
+    mock_shut_down,
+):
+    # This pytest fixture just combines all other fixtures into one so that our
+    # test function signatures don't explode with repetitive mocks
+    pass
+
+
+class TestRunCalibration:
     def test_collects_data_at_configured_rate(
         self,
         mock_output_filepath,
-        mock_drivers,
-        mock_get_all_sensor_data,
-        mock_check_status,
         mock_get_calibration_configuration,
-        mock_wait_for_equilibration,
+        mock_all_integrations,
     ):
         """
         Test is configured to hold at setpoint for 0.2 seconds, and read data
@@ -112,12 +128,11 @@ class TestRunCalibration:
             ]
         )
 
-        test_configuration = self.default_configuration._replace(
+        mock_get_calibration_configuration.return_value = DEFAULT_CONFIGURATION._replace(
             setpoints=setpoints,
-            output_csv_filepath=mock_output_filepath,
             collection_interval=data_collection_interval,
+            output_csv_filepath=mock_output_filepath,
         )
-        mock_get_calibration_configuration.return_value = test_configuration
 
         module.run([])
 
@@ -127,14 +142,7 @@ class TestRunCalibration:
         assert len(output_csv) == expected_output_rows
 
     def test_correct_values_saved_to_csv(
-        self,
-        mock_output_filepath,
-        mocker,
-        mock_drivers,
-        mock_get_all_sensor_data,
-        mock_check_status,
-        mock_get_calibration_configuration,
-        mock_wait_for_equilibration,
+        self, mock_all_integrations, mock_output_filepath, mock_get_all_sensor_data
     ):
 
         expected_csv = pd.DataFrame(
@@ -145,17 +153,13 @@ class TestRunCalibration:
                     "o2 source gas fraction": 0.21,
                     "setpoint O2 fraction": 50.0,
                     "setpoint flow rate (SLPM)": 2.5,
-                    "setpoint hold time seconds": 0.1,
+                    "setpoint hold time seconds": 0.01,
                     "setpoint temperature (C)": 15.0,
                     "stub data": 1,
                 }
             ]
         )
 
-        test_configuration = self.default_configuration._replace(
-            output_csv_filepath=mock_output_filepath
-        )
-        mock_get_calibration_configuration.return_value = test_configuration
         mock_get_all_sensor_data.return_value = pd.Series({"data": 1}).add_prefix(
             "stub "
         )
@@ -166,39 +170,12 @@ class TestRunCalibration:
 
         pd.testing.assert_frame_equal(expected_csv, output_csv)
 
-    def test_checks_status(
-        self,
-        mock_output_filepath,
-        mocker,
-        mock_drivers,
-        mock_get_all_sensor_data,
-        mock_check_status,
-        mock_get_calibration_configuration,
-        mock_wait_for_equilibration,
-    ):
-        mock_get_calibration_configuration.return_value = self.default_configuration._replace(
-            output_csv_filepath=mock_output_filepath
-        )
-
+    def test_checks_status(self, mock_all_integrations, mock_check_status):
         module.run([])
 
         mock_check_status.assert_called()
 
-    def test_shuts_down_at_end(
-        self,
-        mock_output_filepath,
-        mocker,
-        mock_drivers,
-        mock_get_all_sensor_data,
-        mock_check_status,
-        mock_get_calibration_configuration,
-        mock_shut_down,
-        mock_wait_for_equilibration,
-    ):
-        mock_get_calibration_configuration.return_value = self.default_configuration._replace(
-            output_csv_filepath=mock_output_filepath
-        )
-
+    def test_shuts_down_at_end(self, mock_all_integrations, mock_shut_down):
         module.run([])
 
         mock_shut_down.assert_called()
@@ -213,20 +190,8 @@ class TestRunCalibration:
         ],
     )
     def test_shuts_down_after_error(
-        self,
-        mock_output_filepath,
-        mocker,
-        mock_drivers,
-        mock_get_all_sensor_data,
-        mock_get_calibration_configuration,
-        mock_shut_down,
-        mock_wait_for_equilibration,
-        function_that_might_raise,
+        self, mocker, mock_all_integrations, mock_shut_down, function_that_might_raise
     ):
-        mock_get_calibration_configuration.return_value = self.default_configuration._replace(
-            output_csv_filepath=mock_output_filepath
-        )
-
         mocker.patch.object(*function_that_might_raise).side_effect = Exception()
 
         # The expectation is that the Exception is raised and bubbled up, but the code
@@ -245,18 +210,14 @@ class TestRunCalibration:
     )
     def test_calls_wait_for_temperature_equilibration_only_if_temperature_changed(
         self,
-        mock_output_filepath,
-        mocker,
-        mock_drivers,
-        mock_check_status,
-        mock_get_all_sensor_data,
+        mock_all_integrations,
         mock_get_calibration_configuration,
+        mock_output_filepath,
         mock_wait_for_temperature_equilibration,
-        mock_wait_for_do_equilibration,
         setpoint_temperatures,
         expected_wait_call_count,
     ):
-        hold_time = 0.1
+        hold_time = 0.01
         collection_interval = hold_time  # collect one data point per setpoint
         setpoints = pd.DataFrame(
             [
@@ -270,12 +231,11 @@ class TestRunCalibration:
             ]
         )
 
-        test_configuration = self.default_configuration._replace(
+        mock_get_calibration_configuration.return_value = DEFAULT_CONFIGURATION._replace(
             setpoints=setpoints,
             output_csv_filepath=mock_output_filepath,
             collection_interval=collection_interval,
         )
-        mock_get_calibration_configuration.return_value = test_configuration
 
         module.run([])
 
@@ -285,31 +245,39 @@ class TestRunCalibration:
         )
 
 
+@pytest.fixture
+def mock_gas_mixer_shutdown(mocker):
+    return mocker.patch.object(module.gas_mixer, "stop_flow_with_retry")
+
+
+@pytest.fixture
+def mock_water_bath_shutdown(mocker):
+    return mocker.patch.object(
+        module.water_bath, "send_settings_command_and_parse_response"
+    )
+
+
+@pytest.fixture
+def mock_time_sleep(mocker):
+    # Mock time.sleep so that we don't have to wait 5 seconds on every test
+    return mocker.patch.object(time, "sleep")
+
+
 class TestShutDown:
     def test_shuts_down_gas_mixer_and_water_bath(
-        self, mocker, mock_wait_for_equilibration
+        self, mock_gas_mixer_shutdown, mock_water_bath_shutdown, mock_time_sleep
     ):
-        mock_gas_mixer_shutdown = mocker.patch.object(
-            module.gas_mixer, "stop_flow_with_retry"
-        )
-        mock_water_bath_shutdown = mocker.patch.object(
-            module.water_bath, "send_settings_command_and_parse_response"
-        )
 
         module._shut_down(sentinel.gas_mixer_com_port, sentinel.water_bath_com_port)
 
         mock_gas_mixer_shutdown.assert_called()
         mock_water_bath_shutdown.assert_called()
+        mock_time_sleep.assert_called_with(5)
 
     def test_shuts_down_water_bath_if_gas_mixer_raises(
-        self, mocker, mock_wait_for_equilibration
+        self, mock_gas_mixer_shutdown, mock_water_bath_shutdown, mock_time_sleep
     ):
-        mock_gas_mixer_shutdown = mocker.patch.object(
-            module.gas_mixer, "stop_flow_with_retry", side_effect=Exception()
-        )
-        mock_water_bath_shutdown = mocker.patch.object(
-            module.water_bath, "send_settings_command_and_parse_response"
-        )
+        mock_gas_mixer_shutdown.side_effect = Exception()
 
         # The expectation is that the Exception is raised and bubbled up, but the code
         # in the finally block still gets called, so the water bath still gets shut down
@@ -318,3 +286,4 @@ class TestShutDown:
 
         mock_gas_mixer_shutdown.assert_called()
         mock_water_bath_shutdown.assert_called()
+        mock_time_sleep.assert_called_with(5)

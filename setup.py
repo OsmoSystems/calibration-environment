@@ -17,7 +17,8 @@ setup(
         "backoff",
         "pandas",
         "plotly>=4",
-        "pyserial"
+        "pyserial",
+        "slackclient",
     ],
     # fmt: on
     include_package_data=True,

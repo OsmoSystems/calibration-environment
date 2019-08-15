@@ -90,6 +90,11 @@ def mock_get_calibration_configuration(mocker, mock_output_filepath):
 
 
 @pytest.fixture
+def mock_post_slack_message(mocker):
+    return mocker.patch.object(module, "post_slack_message")
+
+
+@pytest.fixture
 def mock_all_integrations(
     mock_drivers,
     mock_get_all_sensor_data,
@@ -97,6 +102,7 @@ def mock_all_integrations(
     mock_check_status,
     mock_wait_for_equilibration,
     mock_shut_down,
+    mock_post_slack_message,
 ):
     # This pytest fixture just combines all other fixtures into one so that our
     # test function signatures don't explode with repetitive mocks
@@ -180,6 +186,15 @@ class TestRunCalibration:
 
         mock_shut_down.assert_called()
 
+    def test_notifies_on_successful_end(
+        self, mock_all_integrations, mock_post_slack_message
+    ):
+        module.run([])
+
+        mock_post_slack_message.assert_called_with(
+            "Calibration routine complete!", mention_channel=False
+        )
+
     @pytest.mark.parametrize(
         "function_that_might_raise",
         [
@@ -189,10 +204,17 @@ class TestRunCalibration:
             (module, "collect_data_to_csv"),
         ],
     )
-    def test_shuts_down_after_error(
-        self, mocker, mock_all_integrations, mock_shut_down, function_that_might_raise
+    def test_shuts_down_and_notifies_after_error(
+        self,
+        mocker,
+        mock_all_integrations,
+        mock_shut_down,
+        mock_post_slack_message,
+        function_that_might_raise,
     ):
-        mocker.patch.object(*function_that_might_raise).side_effect = Exception()
+        mocker.patch.object(*function_that_might_raise).side_effect = Exception(
+            "Mock error"
+        )
 
         # The expectation is that the Exception is raised and bubbled up, but the code
         # in the finally block still gets called, so the system still gets shut down
@@ -200,6 +222,9 @@ class TestRunCalibration:
             module.run([])
 
         mock_shut_down.assert_called()
+        mock_post_slack_message.assert_called_with(
+            "Calibration routine errored! Error: Mock error", mention_channel=True
+        )
 
     @pytest.mark.parametrize(
         "setpoint_temperatures,expected_wait_call_count",

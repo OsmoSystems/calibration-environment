@@ -125,12 +125,12 @@ def run(cli_args=None):
     # Catch interrupts and unexpected errors so we can notify on slack.
     # Re-raise so that we still get the stack traces
     except KeyboardInterrupt as e:
-        logging.warn("Keyboard interrupt! Shutting down... (please wait)")
+        logging.warning("Keyboard interrupt! Shutting down... (please wait)")
         post_slack_message("Calibration routine ended by user.")
         raise e
 
     except Exception as e:
-        logging.warn("Unexpected error! Shutting down... (please wait)")
+        logging.warning("Unexpected error! Shutting down... (please wait)")
         post_slack_message(
             f"Calibration routine ended with error! {e}", mention_channel=True
         )

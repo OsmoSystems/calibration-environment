@@ -28,7 +28,7 @@ def get_ssh_client(cosmobot_hostname: str) -> paramiko.client.SSHClient:
     return client
 
 
-def _generate_run_experiment_command(experiment_name, duration, exposure_time=None):
+def _generate_run_experiment_command(experiment_name, duration, exposure_time):
     run_experiment_path = "/home/pi/.local/bin/run_experiment"
     exposure_time_arg = (
         f" --exposure-time {exposure_time}" if exposure_time is not None else ""
@@ -60,7 +60,9 @@ def run_experiment(
     Returns: ExperimentStreams object
     """
 
-    run_experiment_command = _generate_run_experiment_command(experiment_name, duration)
+    run_experiment_command = _generate_run_experiment_command(
+        experiment_name, duration, exposure_time
+    )
 
     logger.info(
         f"Starting image capture on cosmobot.\nCommand: {run_experiment_command}"

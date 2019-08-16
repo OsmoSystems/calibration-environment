@@ -28,7 +28,7 @@ def get_ssh_client(cosmobot_hostname: str) -> paramiko.client.SSHClient:
     return client
 
 
-def _generate_experiment_command(experiment_name, duration):
+def _generate_run_experiment_command(experiment_name, duration):
     run_experiment_path = "/home/pi/.local/bin/run_experiment"
     variant_params = "-ss 800000 -ISO 100 --led-on"
     run_experiment_command = (
@@ -54,7 +54,7 @@ def run_experiment(
     Returns: ExperimentStreams object
     """
 
-    run_experiment_command = _generate_experiment_command(experiment_name, duration)
+    run_experiment_command = _generate_run_experiment_command(experiment_name, duration)
 
     logger.info(
         f"Starting image capture on cosmobot.\nCommand: {run_experiment_command}"
@@ -66,7 +66,7 @@ def run_experiment(
 class BadExitStatus(Exception):
     def __init__(self, exit_status):
         super().__init__(
-            "Received bad exit status {exit_status} from run_experiment on cosmobot"
+            "Received bad exit status ({exit_status}) from run_experiment on cosmobot"
         )
 
 

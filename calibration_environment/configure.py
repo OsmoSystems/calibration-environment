@@ -119,6 +119,10 @@ def _get_output_csv_filename(start_date):
     return f"{iso_datetime_for_filename(start_date)}_calibration.csv"
 
 
+class InvalidArguments(Exception):
+    pass
+
+
 def get_calibration_configuration(
     cli_args: List[str], start_date: datetime
 ) -> CalibrationConfiguration:
@@ -136,15 +140,13 @@ def get_calibration_configuration(
         "ysi": args["ysi_com_port"],
     }
 
-    # TODO break all of this cosmobot stuff out into a function
     cosmobot_experiment_name = args["cosmobot_experiment_name"]
     cosmobot_hostname = args["cosmobot_hostname"]
 
     if any([cosmobot_experiment_name, cosmobot_hostname]) and not all(
         [cosmobot_experiment_name, cosmobot_hostname]
     ):
-        # TODO better exception class
-        raise Exception(
+        raise InvalidArguments(
             "--cosmobot-experiment-name and --cosmobot-hostname must be provided together"
         )
 
@@ -165,8 +167,8 @@ def get_calibration_configuration(
         output_csv_filepath=_get_output_csv_filename(start_date),
         collection_interval=args["collection_interval"],
         cosmobot_experiment_name=full_cosmobot_experiment_name,
-        cosmobot_hostname=args["cosmobot_hostname"],
-        capture_images=bool(args["cosmobot_hostname"]),
+        cosmobot_hostname=cosmobot_hostname,
+        capture_images=bool(cosmobot_hostname),
     )
 
     return calibration_configuration

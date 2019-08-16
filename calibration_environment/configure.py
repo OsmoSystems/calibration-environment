@@ -151,7 +151,7 @@ def get_calibration_configuration(
         )
 
     # timestamp is added to make the name unique across calibration runs
-    timestamp = time.time()
+    timestamp = int(time.time())
     full_cosmobot_experiment_name = (
         (f'{args["cosmobot_experiment_name"]}_{timestamp}')
         if cosmobot_experiment_name

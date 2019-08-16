@@ -24,6 +24,12 @@ class TestParseArgs:
             "COM3",
             "--collection-interval",
             "50",
+            "--cosmobot-hostname",
+            "cosmohostname",
+            "--cosmobot-experiment-name",
+            "experiment1",
+            "--cosmobot-exposure-time",
+            "0.5",
         ]
 
         expected_args_out = {
@@ -34,6 +40,9 @@ class TestParseArgs:
             "water_bath_com_port": "COM2",
             "ysi_com_port": "COM3",
             "collection_interval": 50,
+            "cosmobot_experiment_name": "experiment1",
+            "cosmobot_hostname": "cosmohostname",
+            "cosmobot_exposure_time": 0.5,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -49,6 +58,9 @@ class TestParseArgs:
             "water_bath_com_port": "COM21",
             "ysi_com_port": "COM11",
             "collection_interval": 60,
+            "cosmobot_hostname": None,
+            "cosmobot_experiment_name": None,
+            "cosmobot_exposure_time": None,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -60,6 +72,19 @@ class TestParseArgs:
 
     def test_unrecognized_args_throws(self):
         args_in = ["--extra"]
+        with pytest.raises(SystemExit):
+            module._parse_args(args_in)
+
+    def test_raises_on_partially_missing_image_capture_args(self):
+        args_in = [
+            "-s",
+            "experiment.csv",
+            "-o2",
+            ".21",
+            "--cosmobot-experiment-name",
+            "experiment_name",
+        ]
+
         with pytest.raises(SystemExit):
             module._parse_args(args_in)
 
@@ -88,6 +113,10 @@ class TestGetCalibrationConfiguration:
             loop=True,
             output_csv_filepath=sentinel.filepath,
             collection_interval=60,
+            cosmobot_experiment_name=None,
+            cosmobot_hostname=None,
+            cosmobot_exposure_time=None,
+            capture_images=False,
         )
 
         actual_configuration = module.get_calibration_configuration(args_in, start_date)

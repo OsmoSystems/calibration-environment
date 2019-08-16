@@ -73,6 +73,10 @@ DEFAULT_CONFIGURATION = CalibrationConfiguration(
     loop=False,
     output_csv_filepath="test.csv",
     collection_interval=0.01,
+    cosmobot_experiment_name=None,
+    cosmobot_hostname=None,
+    cosmobot_exposure_time=None,
+    capture_images=False,
 )
 
 
@@ -81,7 +85,6 @@ def mock_get_calibration_configuration(mocker, mock_output_filepath):
     mock_calibration_configuration = DEFAULT_CONFIGURATION._replace(
         output_csv_filepath=mock_output_filepath
     )
-
     return mocker.patch.object(
         module,
         "get_calibration_configuration",

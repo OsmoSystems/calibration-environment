@@ -12,7 +12,7 @@ class TestGenerateRunExperimentCommand:
         )
         expected_command = (
             f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results"
-            f' --skip-temperature --interval 9 --duration 90 --variant "-ss 800000 -ISO 100 --led-on"'
+            f' --skip-temperature --interval 9 --duration 90 --variant "--exposure-time 0.8 -ISO 100 --led-on"'
         )
 
         assert actual_command == expected_command

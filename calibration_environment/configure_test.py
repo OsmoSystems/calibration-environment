@@ -28,6 +28,8 @@ class TestParseArgs:
             "cosmohostname",
             "--cosmobot-experiment-name",
             "experiment1",
+            "--cosmobot-exposure-time",
+            "0.5",
         ]
 
         expected_args_out = {
@@ -40,6 +42,7 @@ class TestParseArgs:
             "collection_interval": 50,
             "cosmobot_experiment_name": "experiment1",
             "cosmobot_hostname": "cosmohostname",
+            "cosmobot_exposure_time": 0.5,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -57,6 +60,7 @@ class TestParseArgs:
             "collection_interval": 60,
             "cosmobot_hostname": None,
             "cosmobot_experiment_name": None,
+            "cosmobot_exposure_time": None,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -98,6 +102,7 @@ class TestGetCalibrationConfiguration:
             collection_interval=60,
             cosmobot_experiment_name=None,
             cosmobot_hostname=None,
+            cosmobot_exposure_time=None,
             capture_images=False,
         )
 

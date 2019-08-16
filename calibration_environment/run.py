@@ -113,6 +113,7 @@ def run(cli_args=None):
                         cosmobot_ssh_client,
                         calibration_configuration.cosmobot_experiment_name,
                         setpoint["hold_time"],
+                        calibration_configuration.exposure_time,
                     )
 
                 while datetime.now() < setpoint_hold_end_time:

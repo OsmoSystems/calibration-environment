@@ -75,6 +75,7 @@ DEFAULT_CONFIGURATION = CalibrationConfiguration(
     collection_interval=0.01,
     cosmobot_experiment_name=None,
     cosmobot_hostname=None,
+    cosmobot_exposure_time=None,
     capture_images=False,
 )
 

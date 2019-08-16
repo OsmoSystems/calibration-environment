@@ -77,6 +77,7 @@ class TestCollectDataToCsv:
         collection_interval=0.1,
         cosmobot_experiment_name="frankenstein",
         cosmobot_hostname="cosmo",
+        cosmobot_exposure_time=0.5,
         capture_images=True,
     )
 

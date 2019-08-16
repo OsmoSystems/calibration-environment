@@ -28,9 +28,12 @@ def get_ssh_client(cosmobot_hostname: str) -> paramiko.client.SSHClient:
     return client
 
 
-def _generate_run_experiment_command(experiment_name, duration):
+def _generate_run_experiment_command(experiment_name, duration, exposure_time=None):
     run_experiment_path = "/home/pi/.local/bin/run_experiment"
-    variant_params = "--exposure-time 0.8 -ISO 100 --led-on"
+    exposure_time_arg = (
+        f" --exposure-time {exposure_time}" if exposure_time is not None else ""
+    )
+    variant_params = f"-ISO 100 --led-on{exposure_time_arg}"
     run_experiment_command = (
         f"{run_experiment_path} --name {experiment_name} --group-results --skip-temperature --interval 9"
         f' --duration {duration} --variant "{variant_params}"'
@@ -43,7 +46,10 @@ ExperimentStreams = namedtuple("ExperimentStreams", ["stdin", "stdout", "stderr"
 
 
 def run_experiment(
-    ssh_client: paramiko.client.SSHClient, experiment_name: str, duration: int
+    ssh_client: paramiko.client.SSHClient,
+    experiment_name: str,
+    duration: int,
+    exposure_time: float = None,
 ) -> ExperimentStreams:
     """Run run_experiment (image capture program) on the cosmobot with the given name and duration
 
@@ -70,22 +76,16 @@ class BadExitStatus(Exception):
         )
 
 
+class ExitStatusNotReceived(Exception):
+    pass
+
+
 def wait_for_exit(experiment_streams: ExperimentStreams) -> None:
     stdout = experiment_streams.stdout
     exit_status = stdout.channel.recv_exit_status()
 
-    if exit_status != 0:
-        # TODO raise different error for -1 vs. >0? not sure why we would ever receive -1 (maybe lost connection)
+    if exit_status > 0:
         raise BadExitStatus(exit_status)
-
-
-# TODO delete this function if we don't use it
-def ensure_no_bad_exit(experiment_streams: ExperimentStreams) -> None:
-    # raise an exception if there was a bad exit on the experiment
-    stdout = experiment_streams.stdout
-    if stdout.channel.exit_status_ready():
-        exit_status = stdout.channel.recv_exit_status()
-
-    if exit_status != 0:
-        # TODO raise different error for -1 vs. >0?
-        raise BadExitStatus(exit_status)
+    elif exit_status == -1:
+        # paramiko returns -1 if no exit status is provided by the server (connection issue?)
+        raise ExitStatusNotReceived("Could not read an exit status for run_experiment")

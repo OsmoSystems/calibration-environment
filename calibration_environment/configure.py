@@ -23,6 +23,7 @@ CalibrationConfiguration = namedtuple(
         "collection_interval",
         "cosmobot_hostname",
         "cosmobot_experiment_name",
+        "cosmobot_exposure_time",
         "capture_images",
     ],
 )
@@ -59,6 +60,12 @@ def _parse_args(args: List[str]) -> Dict:
     arg_parser.add_argument(
         "--cosmobot-hostname",
         help="cosmobot hostname or ip address (must be provided with --cosmobot-experiment-name)",
+    )
+
+    arg_parser.add_argument(
+        "--cosmobot-exposure-time",
+        type=float,
+        help="exposure time in seconds for run_experiment",
     )
 
     arg_parser.add_argument(
@@ -168,6 +175,7 @@ def get_calibration_configuration(
         collection_interval=args["collection_interval"],
         cosmobot_experiment_name=full_cosmobot_experiment_name,
         cosmobot_hostname=cosmobot_hostname,
+        cosmobot_exposure_time=args["cosmobot_exposure_time"],
         capture_images=bool(cosmobot_hostname),
     )
 

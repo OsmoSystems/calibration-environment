@@ -5,13 +5,13 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from calibration_environment.status import check_status
-from .data_logging import collect_data_to_csv
-from .drivers import gas_mixer
-from .drivers import water_bath
-from .equilibrate import wait_for_temperature_equilibration, wait_for_do_equilibration
-from .configure import get_calibration_configuration
 from . import cosmobot
+from .configure import get_calibration_configuration
+from .data_logging import collect_data_to_csv
+from .drivers import gas_mixer, water_bath
+from .equilibrate import wait_for_temperature_equilibration, wait_for_do_equilibration
+from .notifications import post_slack_message
+from .status import check_status
 
 
 def _shut_down(gas_mixer_com_port, water_bath_com_port):
@@ -144,12 +144,29 @@ def run(cli_args=None):
             if not calibration_configuration.loop:
                 break
 
+    # Catch interrupts and unexpected errors so we can notify on slack.
+    # Re-raise so that we still get the stack traces
+    except KeyboardInterrupt as e:
+        logging.warning("Keyboard interrupt! Shutting down... (please wait)")
+        post_slack_message("Calibration routine ended by user.")
+        raise e
+
+    except Exception as e:
+        logging.warning("Unexpected error! Shutting down... (please wait)")
+        post_slack_message(
+            f"Calibration routine ended with error! {e}", mention_channel=True
+        )
+        raise e
+
+    else:
+        post_slack_message("Calibration routine ended successfully!")
+
+    # Ensure gas mixer and water bath get turned off regardless of any unexpected errors
     finally:
         try:
             cosmobot_ssh_client.close()
         except Exception as e:
             logging.exception(e)
 
-        # Ensure that the gas mixer and the water bath get turned off even if something
-        # unexpected happens.
         _shut_down(gas_mixer_com_port, water_bath_com_port)
+        post_slack_message("Calibration system shut down.")

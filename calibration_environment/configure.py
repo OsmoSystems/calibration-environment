@@ -111,6 +111,16 @@ def _parse_args(args: List[str]) -> Dict:
     )
 
     calibration_arg_namespace = arg_parser.parse_args(args)
+
+    cosmobot_experiment_name = calibration_arg_namespace.cosmobot_experiment_name
+    cosmobot_hostname = calibration_arg_namespace.cosmobot_hostname
+    if any([cosmobot_experiment_name, cosmobot_hostname]) and not all(
+        [cosmobot_experiment_name, cosmobot_hostname]
+    ):
+        arg_parser.error(
+            "--cosmobot-experiment-name and --cosmobot-hostname must be provided together"
+        )
+
     return vars(calibration_arg_namespace)
 
 
@@ -124,10 +134,6 @@ def iso_datetime_for_filename(datetime_):
 
 def _get_output_csv_filename(start_date):
     return f"{iso_datetime_for_filename(start_date)}_calibration.csv"
-
-
-class InvalidArguments(Exception):
-    pass
 
 
 def get_calibration_configuration(
@@ -148,18 +154,10 @@ def get_calibration_configuration(
     }
 
     cosmobot_experiment_name = args["cosmobot_experiment_name"]
-    cosmobot_hostname = args["cosmobot_hostname"]
-
-    if any([cosmobot_experiment_name, cosmobot_hostname]) and not all(
-        [cosmobot_experiment_name, cosmobot_hostname]
-    ):
-        raise InvalidArguments(
-            "--cosmobot-experiment-name and --cosmobot-hostname must be provided together"
-        )
 
     # timestamp is added to make the name unique across calibration runs
     timestamp = int(time.time())
-    full_cosmobot_experiment_name = (
+    unique_cosmobot_experiment_name = (
         (f'{args["cosmobot_experiment_name"]}_{timestamp}')
         if cosmobot_experiment_name
         else None
@@ -173,10 +171,10 @@ def get_calibration_configuration(
         loop=args["loop"],
         output_csv_filepath=_get_output_csv_filename(start_date),
         collection_interval=args["collection_interval"],
-        cosmobot_experiment_name=full_cosmobot_experiment_name,
-        cosmobot_hostname=cosmobot_hostname,
+        cosmobot_experiment_name=unique_cosmobot_experiment_name,
+        cosmobot_hostname=args["cosmobot_hostname"],
         cosmobot_exposure_time=args["cosmobot_exposure_time"],
-        capture_images=bool(cosmobot_hostname),
+        capture_images=bool(args["cosmobot_hostname"]),
     )
 
     return calibration_configuration

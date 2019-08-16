@@ -75,6 +75,19 @@ class TestParseArgs:
         with pytest.raises(SystemExit):
             module._parse_args(args_in)
 
+    def test_raises_on_partially_missing_image_capture_args(self):
+        args_in = [
+            "-s",
+            "experiment.csv",
+            "-o2",
+            ".21",
+            "--cosmobot-experiment-name",
+            "experiment_name",
+        ]
+
+        with pytest.raises(SystemExit):
+            module._parse_args(args_in)
+
 
 class TestGetCalibrationConfiguration:
     def test_returns_all_configuration_options(self, mocker):
@@ -149,33 +162,4 @@ class TestGetCalibrationConfiguration:
         args_in = ["-s", "experiment.csv", "-o2", ".21", "--loop"]
 
         with pytest.raises(ValueError, match="Invalid setpoints detected"):
-            module.get_calibration_configuration(args_in, start_date)
-
-    def test_raises_on_partially_missing_image_capture_args(self, mocker):
-        mocker.patch.object(
-            module, "read_setpoint_sequence_file", return_value=sentinel.setpoints
-        )
-        mocker.patch.object(
-            module, "_get_output_csv_filename", return_value=sentinel.filepath
-        )
-        mocker.patch.object(
-            module, "get_validation_errors", return_value=pd.DataFrame()
-        )
-
-        start_date = datetime.now()
-
-        args_in = [
-            "-s",
-            "experiment.csv",
-            "-o2",
-            ".21",
-            "--loop",
-            "--cosmobot-experiment-name",
-            "experiment_name",
-        ]
-
-        with pytest.raises(
-            module.InvalidArguments,
-            match="--cosmobot-experiment-name and --cosmobot-hostname must be provided together",
-        ):
             module.get_calibration_configuration(args_in, start_date)

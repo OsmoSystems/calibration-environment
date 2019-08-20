@@ -3,7 +3,7 @@ import os
 import slack
 
 
-DEFAULT_SLACK_CHANNEL = "#technical"
+DEFAULT_SLACK_CHANNEL = "#water-bath-funtimes"
 
 
 def post_slack_message(message: str, mention_channel: bool = False):

@@ -86,6 +86,17 @@ def run(cli_args=None):
                     last_setpoint is None
                     or last_setpoint["temperature"] != setpoint["temperature"]
                 ):
+                    gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
+                    wait_for_temperature_equilibration(
+                        calibration_configuration, setpoint, loop_count
+                    )
+
+                    gas_mixer.start_constant_flow_mix_with_retry(
+                        gas_mixer_com_port,
+                        setpoint["flow_rate_slpm"],
+                        setpoint["o2_fraction"],
+                        calibration_configuration.o2_source_gas_fraction,
+                    )
                     wait_for_temperature_equilibration(
                         calibration_configuration, setpoint, loop_count
                     )

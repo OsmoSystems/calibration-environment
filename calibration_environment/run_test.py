@@ -264,8 +264,8 @@ class TestRunCalibration:
     @pytest.mark.parametrize(
         "setpoint_temperatures,expected_wait_call_count",
         (
-            ((15, 25), 2),  # called for each setpoint because temperature changed
-            ((15, 15), 1),  # only one call since temperature didn't change
+            ((15, 25), 4),  # called twice at each temperature setpoint change
+            ((15, 15), 2),  # only called for initial temperature equilibration
         ),
     )
     def test_calls_wait_for_temperature_equilibration_only_if_temperature_changed(

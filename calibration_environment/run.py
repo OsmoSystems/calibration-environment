@@ -80,12 +80,25 @@ def run(cli_args=None):
                     data=setpoint["temperature"],
                 )
 
-                # skip waiting for temperature equilibration if temperature didn't change
-                # from last setpoint
+                # only wait for temperature equilibration if temperature
+                # changed from last setpoint
                 if (
                     last_setpoint is None
                     or last_setpoint["temperature"] != setpoint["temperature"]
                 ):
+                    # Stop gas mixer while we wait for temperature equilibration to conserve gas
+                    gas_mixer.stop_flow_with_retry(gas_mixer_com_port)
+                    wait_for_temperature_equilibration(
+                        calibration_configuration, setpoint, loop_count
+                    )
+
+                    # Resume gas flow and ensure temperature remains equilibrated
+                    gas_mixer.start_constant_flow_mix_with_retry(
+                        gas_mixer_com_port,
+                        setpoint["flow_rate_slpm"],
+                        setpoint["o2_fraction"],
+                        calibration_configuration.o2_source_gas_fraction,
+                    )
                     wait_for_temperature_equilibration(
                         calibration_configuration, setpoint, loop_count
                     )

@@ -57,6 +57,7 @@ def run(cli_args=None):
     gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
 
     if calibration_configuration.capture_images:
+        # open SSH connection to each cosmobot
         cosmobot_ssh_clients = [
             cosmobot.get_ssh_client(hostname)
             for hostname in calibration_configuration.cosmobot_hostnames
@@ -151,11 +152,11 @@ def run(cli_args=None):
                 if calibration_configuration.capture_images:
                     # wait for run_experiment to complete (raises if it has a bad exit code)
                     logging.info(
-                        "Waiting for run_experiment on cosmobots to complete..."
+                        "Waiting for run_experiment on cosmobot(s) to complete..."
                     )
                     for experiment_streams in running_experiments:
                         cosmobot.wait_for_exit(experiment_streams)
-                    logging.info("Cosmobot run_experiment processes completed")
+                    logging.info("All cosmobot run_experiment processes completed")
 
             # Increment so we know which iteration we're on in the logs
             loop_count += 1

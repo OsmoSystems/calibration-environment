@@ -76,7 +76,7 @@ class TestCollectDataToCsv:
         output_csv_filepath="test.csv",
         collection_interval=0.1,
         cosmobot_experiment_name="frankenstein",
-        cosmobot_hostname="cosmo",
+        cosmobot_hostnames=["cosmo"],
         cosmobot_exposure_time=0.5,
         capture_images=True,
     )

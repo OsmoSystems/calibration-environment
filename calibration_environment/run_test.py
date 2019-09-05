@@ -74,7 +74,7 @@ DEFAULT_CONFIGURATION = CalibrationConfiguration(
     output_csv_filepath="test.csv",
     collection_interval=0.01,
     cosmobot_experiment_name=None,
-    cosmobot_hostname=None,
+    cosmobot_hostnames=None,
     cosmobot_exposure_time=None,
     capture_images=False,
 )

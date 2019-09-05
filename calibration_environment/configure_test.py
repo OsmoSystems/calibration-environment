@@ -25,7 +25,9 @@ class TestParseArgs:
             "--collection-interval",
             "50",
             "--cosmobot-hostname",
-            "cosmohostname",
+            "cosmohostname1",
+            "--cosmobot-hostname",
+            "cosmohostname2",
             "--cosmobot-experiment-name",
             "experiment1",
             "--cosmobot-exposure-time",
@@ -41,7 +43,7 @@ class TestParseArgs:
             "ysi_com_port": "COM3",
             "collection_interval": 50,
             "cosmobot_experiment_name": "experiment1",
-            "cosmobot_hostname": "cosmohostname",
+            "cosmobot_hostnames": ["cosmohostname1", "cosmohostname2"],
             "cosmobot_exposure_time": 0.5,
         }
 
@@ -58,7 +60,7 @@ class TestParseArgs:
             "water_bath_com_port": "COM21",
             "ysi_com_port": "COM11",
             "collection_interval": 60,
-            "cosmobot_hostname": None,
+            "cosmobot_hostnames": None,
             "cosmobot_experiment_name": None,
             "cosmobot_exposure_time": None,
         }
@@ -75,7 +77,7 @@ class TestParseArgs:
         with pytest.raises(SystemExit):
             module._parse_args(args_in)
 
-    def test_raises_on_partially_missing_image_capture_args(self):
+    def test_raises_on_missing_cosmobot_hostnames_for_experiment_name(self):
         args_in = [
             "-s",
             "experiment.csv",
@@ -83,6 +85,19 @@ class TestParseArgs:
             ".21",
             "--cosmobot-experiment-name",
             "experiment_name",
+        ]
+
+        with pytest.raises(SystemExit):
+            module._parse_args(args_in)
+
+    def test_raises_on_missing_cosmobot_experiment_name_for_hostnames(self):
+        args_in = [
+            "-s",
+            "experiment.csv",
+            "-o2",
+            ".21",
+            "--cosmobot-hostname",
+            "192.168.1.1",
         ]
 
         with pytest.raises(SystemExit):
@@ -114,7 +129,7 @@ class TestGetCalibrationConfiguration:
             output_csv_filepath=sentinel.filepath,
             collection_interval=60,
             cosmobot_experiment_name=None,
-            cosmobot_hostname=None,
+            cosmobot_hostnames=None,
             cosmobot_exposure_time=None,
             capture_images=False,
         )

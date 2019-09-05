@@ -21,7 +21,7 @@ CalibrationConfiguration = namedtuple(
         "loop",
         "output_csv_filepath",
         "collection_interval",
-        "cosmobot_hostname",
+        "cosmobot_hostnames",
         "cosmobot_experiment_name",
         "cosmobot_exposure_time",
         "capture_images",
@@ -59,7 +59,10 @@ def _parse_args(args: List[str]) -> Dict:
 
     arg_parser.add_argument(
         "--cosmobot-hostname",
-        help="cosmobot hostname or ip address (must be provided with --cosmobot-experiment-name)",
+        action="append",
+        dest="cosmobot_hostnames",
+        help="cosmobot hostname or ip address. Specify this option multiple times to capture images on "
+        "multiple cosmobots. (must be provided with --cosmobot-experiment-name)",
     )
 
     arg_parser.add_argument(
@@ -113,9 +116,9 @@ def _parse_args(args: List[str]) -> Dict:
     calibration_arg_namespace = arg_parser.parse_args(args)
 
     cosmobot_experiment_name = calibration_arg_namespace.cosmobot_experiment_name
-    cosmobot_hostname = calibration_arg_namespace.cosmobot_hostname
-    if any([cosmobot_experiment_name, cosmobot_hostname]) and not all(
-        [cosmobot_experiment_name, cosmobot_hostname]
+    cosmobot_hostnames = calibration_arg_namespace.cosmobot_hostnames
+    if any([cosmobot_experiment_name, cosmobot_hostnames]) and not all(
+        [cosmobot_experiment_name, cosmobot_hostnames]
     ):
         arg_parser.error(
             "--cosmobot-experiment-name and --cosmobot-hostname must be provided together"
@@ -172,9 +175,9 @@ def get_calibration_configuration(
         output_csv_filepath=_get_output_csv_filename(start_date),
         collection_interval=args["collection_interval"],
         cosmobot_experiment_name=unique_cosmobot_experiment_name,
-        cosmobot_hostname=args["cosmobot_hostname"],
+        cosmobot_hostnames=args["cosmobot_hostnames"],
         cosmobot_exposure_time=args["cosmobot_exposure_time"],
-        capture_images=bool(args["cosmobot_hostname"]),
+        capture_images=bool(args["cosmobot_hostnames"]),
     )
 
     return calibration_configuration

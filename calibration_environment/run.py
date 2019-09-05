@@ -57,9 +57,10 @@ def run(cli_args=None):
     gas_mixer_com_port = calibration_configuration.com_ports["gas_mixer"]
 
     if calibration_configuration.capture_images:
-        cosmobot_ssh_client = cosmobot.get_ssh_client(
-            calibration_configuration.cosmobot_hostname
-        )
+        cosmobot_ssh_clients = [
+            cosmobot.get_ssh_client(hostname)
+            for hostname in calibration_configuration.cosmobot_hostnames
+        ]
 
     try:
         water_bath.initialize(water_bath_com_port)
@@ -121,13 +122,16 @@ def run(cli_args=None):
                 next_data_collection_time = datetime.now()
 
                 if calibration_configuration.capture_images:
-                    # start cosmobot image capture
-                    run_experiment_streams = cosmobot.run_experiment(
-                        cosmobot_ssh_client,
-                        calibration_configuration.cosmobot_experiment_name,
-                        setpoint["hold_time"],
-                        calibration_configuration.cosmobot_exposure_time,
-                    )
+                    # start image capture on cosmobots
+                    running_experiments = [
+                        cosmobot.run_experiment(
+                            cosmobot_ssh_client,
+                            calibration_configuration.cosmobot_experiment_name,
+                            setpoint["hold_time"],
+                            calibration_configuration.cosmobot_exposure_time,
+                        )
+                        for cosmobot_ssh_client in cosmobot_ssh_clients
+                    ]
 
                 while datetime.now() < setpoint_hold_end_time:
                     # Wait before collecting next datapoint
@@ -147,10 +151,11 @@ def run(cli_args=None):
                 if calibration_configuration.capture_images:
                     # wait for run_experiment to complete (raises if it has a bad exit code)
                     logging.info(
-                        "Waiting for run_experiment on cosmobot to complete..."
+                        "Waiting for run_experiment on cosmobots to complete..."
                     )
-                    cosmobot.wait_for_exit(run_experiment_streams)
-                    logging.info("Cosmobot run_experiment process completed")
+                    for experiment_streams in running_experiments:
+                        cosmobot.wait_for_exit(experiment_streams)
+                    logging.info("Cosmobot run_experiment processes completed")
 
             # Increment so we know which iteration we're on in the logs
             loop_count += 1
@@ -177,10 +182,12 @@ def run(cli_args=None):
 
     # Ensure gas mixer and water bath get turned off regardless of any unexpected errors
     finally:
-        try:
-            cosmobot_ssh_client.close()
-        except Exception as e:
-            logging.exception(e)
+        if calibration_configuration.capture_images:
+            for cosmobot_ssh_client in cosmobot_ssh_clients:
+                try:
+                    cosmobot_ssh_client.close()
+                except Exception as e:
+                    logging.exception(e)
 
         _shut_down(gas_mixer_com_port, water_bath_com_port)
         post_slack_message("Calibration system shut down.")

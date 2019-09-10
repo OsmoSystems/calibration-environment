@@ -185,10 +185,7 @@ def run(cli_args=None):
     finally:
         if calibration_configuration.capture_images:
             for cosmobot_ssh_client in cosmobot_ssh_clients:
-                try:
-                    cosmobot_ssh_client.close()
-                except Exception as e:
-                    logging.exception(e)
+                cosmobot.attempt_to_close_connection(cosmobot_ssh_client)
 
         _shut_down(gas_mixer_com_port, water_bath_com_port)
         post_slack_message("Calibration system shut down.")

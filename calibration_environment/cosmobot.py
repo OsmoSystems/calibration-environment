@@ -15,9 +15,7 @@ def get_ssh_client(cosmobot_hostname: str) -> paramiko.client.SSHClient:
 
     Returns: paramiko SSHClient object
     """
-    logger.info(
-        f"Establishing SSH connection to cosmobot (hostname: {cosmobot_hostname})..."
-    )
+    logger.info(f"Establishing SSH connection to cosmobot {cosmobot_hostname}...")
 
     cosmobot_username = "pi"
 
@@ -25,9 +23,7 @@ def get_ssh_client(cosmobot_hostname: str) -> paramiko.client.SSHClient:
     client.load_system_host_keys()
     client.connect(cosmobot_hostname, username=cosmobot_username)
 
-    logger.info(
-        f"Established SSH connection to cosmobot (hostname: {cosmobot_hostname})"
-    )
+    logger.info(f"Established SSH connection to cosmobot {cosmobot_hostname}")
 
     return client
 
@@ -70,7 +66,7 @@ def run_experiment(
 
     hostname = ssh_client.get_transport().hostname
     logger.info(
-        f"Starting image capture on cosmobot (hostname: {hostname}).\n"
+        f"Starting image capture on cosmobot {hostname}\n"
         f"Command: {run_experiment_command}"
     )
 
@@ -80,12 +76,15 @@ def run_experiment(
 class BadExitStatus(Exception):
     def __init__(self, exit_status, hostname):
         super().__init__(
-            f"Received bad exit status ({exit_status}) from run_experiment on cosmobot (hostname: {hostname})"
+            f"Received bad exit status ({exit_status}) from run_experiment on cosmobot {hostname}"
         )
 
 
 class ExitStatusNotReceived(Exception):
-    pass
+    def __init__(self, hostname):
+        super().__init__(
+            f"Could not read an exit status for run_experiment on cosmobot {hostname}"
+        )
 
 
 def _get_hostname_from_stream(stream):
@@ -101,6 +100,19 @@ def wait_for_exit(experiment_streams: ExperimentStreams) -> None:
         raise BadExitStatus(exit_status, hostname)
     elif exit_status == -1:
         # paramiko returns -1 if no exit status is provided by the server (connection issue?)
-        raise ExitStatusNotReceived(
-            f"Could not read an exit status for run_experiment on cosmobot (hostname: {hostname})"
+        raise ExitStatusNotReceived(hostname)
+
+
+def attempt_to_close_connection(ssh_client: paramiko.client.SSHClient):
+    """Call ssh_client.close() and log exception and cosmobot hostname if it fails"""
+
+    # get hostname up here in case the transport isn't available after a failed close()
+    hostname = ssh_client.get_transport().hostname
+
+    try:
+        ssh_client.close()
+    except Exception as e:
+        logging.error(
+            f"exception occured while trying to close ssh connection to cosmobot {hostname}"
         )
+        logging.exception(e)

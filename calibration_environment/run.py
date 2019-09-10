@@ -150,7 +150,7 @@ def run(cli_args=None):
                     check_status(calibration_configuration.com_ports)
 
                 if calibration_configuration.capture_images:
-                    # wait for run_experiment to complete (raises if it has a bad exit code)
+                    # Wait for all run_experiment processes to complete (raises if any have a bad exit code)
                     logging.info(
                         "Waiting for run_experiment on cosmobot(s) to complete..."
                     )

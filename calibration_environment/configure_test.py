@@ -26,7 +26,7 @@ class TestParseArgs:
             "50",
             "--cosmobot-hostname",
             "cosmohostname1",
-            "--cosmobot-hostname",
+            "-c",
             "cosmohostname2",
             "--cosmobot-experiment-name",
             "experiment1",

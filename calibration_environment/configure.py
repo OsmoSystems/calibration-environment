@@ -58,6 +58,7 @@ def _parse_args(args: List[str]) -> Dict:
     )
 
     arg_parser.add_argument(
+        "-c",
         "--cosmobot-hostname",
         action="append",
         dest="cosmobot_hostnames",

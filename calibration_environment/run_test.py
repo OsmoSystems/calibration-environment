@@ -74,7 +74,7 @@ DEFAULT_CONFIGURATION = CalibrationConfiguration(
     output_csv_filepath="test.csv",
     collection_interval=0.01,
     cosmobot_experiment_name=None,
-    cosmobot_hostname=None,
+    cosmobot_hostnames=None,
     cosmobot_exposure_time=None,
     capture_images=False,
 )
@@ -95,6 +95,11 @@ def mock_get_calibration_configuration(mocker, mock_output_filepath):
 @pytest.fixture
 def mock_post_slack_message(mocker):
     return mocker.patch.object(module, "post_slack_message")
+
+
+@pytest.fixture
+def mock_cosmobot_module(mocker):
+    return mocker.patch.object(module, "cosmobot")
 
 
 @pytest.fixture
@@ -304,6 +309,66 @@ class TestRunCalibration:
         assert (
             mock_wait_for_temperature_equilibration.call_count
             == expected_wait_call_count
+        )
+
+    def test_calls_cosmobot_operations_for_all_hostnames(
+        self,
+        mock_all_integrations,
+        mock_get_calibration_configuration,
+        mock_output_filepath,
+        mock_wait_for_temperature_equilibration,
+        mock_cosmobot_module,
+    ):
+        hostnames = [sentinel.hostname_1, sentinel.hostname_2]
+        mock_get_calibration_configuration.return_value = DEFAULT_CONFIGURATION._replace(
+            capture_images=True,
+            cosmobot_hostnames=hostnames,
+            cosmobot_experiment_name=sentinel.experiment_name,
+        )
+
+        module.run([])
+
+        assert mock_cosmobot_module.get_ssh_client.call_count == 2
+        for hostname in hostnames:
+            mock_cosmobot_module.get_ssh_client.assert_any_call(hostname)
+
+        assert mock_cosmobot_module.run_experiment.call_count == 2
+        assert mock_cosmobot_module.wait_for_exit.call_count == 2
+        assert mock_cosmobot_module.attempt_to_close_connection.call_count == 2
+
+    def test_calls_cosmobot_operations_with_expected_values(
+        self,
+        mock_all_integrations,
+        mock_get_calibration_configuration,
+        mock_output_filepath,
+        mock_wait_for_temperature_equilibration,
+        mock_cosmobot_module,
+    ):
+        hostnames = [sentinel.hostname]
+        mock_get_calibration_configuration.return_value = DEFAULT_CONFIGURATION._replace(
+            capture_images=True,
+            cosmobot_hostnames=hostnames,
+            cosmobot_experiment_name=sentinel.experiment_name,
+            cosmobot_exposure_time=sentinel.exposure_time,
+        )
+
+        mock_cosmobot_module.get_ssh_client.return_value = sentinel.ssh_client
+        mock_cosmobot_module.run_experiment.return_value = sentinel.experiment_streams
+
+        module.run([])
+
+        mock_cosmobot_module.get_ssh_client.assert_called_once_with(sentinel.hostname)
+        mock_cosmobot_module.run_experiment.assert_called_once_with(
+            sentinel.ssh_client,
+            sentinel.experiment_name,
+            DEFAULT_SETPOINTS["hold_time"][0],
+            sentinel.exposure_time,
+        )
+        mock_cosmobot_module.wait_for_exit.assert_called_once_with(
+            sentinel.experiment_streams
+        )
+        mock_cosmobot_module.attempt_to_close_connection.assert_called_once_with(
+            sentinel.ssh_client
         )
 
 

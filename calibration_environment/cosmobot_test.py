@@ -11,7 +11,7 @@ class TestGenerateRunExperimentCommand:
             experiment_name="experiment_name", duration="90", exposure_time=0.1234
         )
         expected_command = (
-            f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results"
+            f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results --erase-synced-files"
             f' --interval 9 --duration 90 --variant "-ISO 100 --led-on --exposure-time 0.1234"'
         )
 
@@ -22,7 +22,7 @@ class TestGenerateRunExperimentCommand:
             experiment_name="experiment_name", duration="90", exposure_time=None
         )
         expected_command = (
-            f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results"
+            f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results --erase-synced-files"
             f' --interval 9 --duration 90 --variant "-ISO 100 --led-on"'
         )
 

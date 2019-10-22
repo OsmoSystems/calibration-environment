@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import Type
+from urllib.parse import unquote
 
 import pandas as pd
 
@@ -19,8 +21,15 @@ class YSICommand(str, Enum):
     get_do_mg_l = "Get Normal SENSOR_DO_MG_L"
     get_temp_c = "Get Normal SENSOR_TEMP_C"
 
+    get_unit_id = "Get UnitID"
+
     def to_bytes_packet(self) -> bytes:
-        return bytes(f"$ADC {self.value}\r\n", encoding="utf8")
+        prefix = "INFO" if self == YSICommand.get_unit_id else "ADC"
+        return bytes(f"${prefix} {self.value}\r\n", encoding="utf8")
+
+    @property
+    def expected_response_type(self) -> Type:
+        return str if self == YSICommand.get_unit_id else float
 
 
 _YSI_RESPONSE_TERMINATOR = b"\r\n$ACK\r\n"
@@ -28,7 +37,26 @@ _YSI_RESPONSE_INITIATOR = b"$"
 _YSI_BAUD_RATE = 57600
 
 
-def parse_ysi_response(response_bytes: bytes):
+def _decode_response_payload(raw_content_str: str, expected_response_type: Type):
+    """ take a YSI response payload that has already been unpacked from the response packet
+    and parse it as the expected type.
+    """
+    if expected_response_type == str:
+        return unquote(raw_content_str)
+    elif expected_response_type == float:
+        try:
+            return float(raw_content_str)
+        except ValueError:
+            raise InvalidYsiResponse(
+                f'"{raw_content_str}" could not be converted to expected response type {expected_response_type}'
+            )
+    else:
+        raise ValueError(
+            f"I don't know how to parse the expected response type {expected_response_type} from YSI data"
+        )
+
+
+def parse_response_packet(response_bytes: bytes, expected_response_type: Type):
     """ Response format is something like "$49.9\r\n$ACK\r\n" for 49.9
     """
     if not response_bytes.endswith(_YSI_RESPONSE_TERMINATOR):
@@ -45,15 +73,10 @@ def parse_ysi_response(response_bytes: bytes):
         len(_YSI_RESPONSE_INITIATOR) : -len(_YSI_RESPONSE_TERMINATOR)
     ]
 
-    try:
-        return float(response_substr)
-    except ValueError:
-        raise InvalidYsiResponse(
-            f'"{response_substr}" from within YSI response {response_bytes} could not be converted to a float'
-        )
+    return _decode_response_payload(response_substr, expected_response_type)
 
 
-def _get_sensor_reading(port: str, command: YSICommand) -> str:
+def _get_sensor_reading(port: str, command: YSICommand):
     """ Given a serial command, send it on a serial port and return the response.
     Handles YSI default serial settings and stuff.
 
@@ -62,7 +85,7 @@ def _get_sensor_reading(port: str, command: YSICommand) -> str:
         port: serial port to connect to, e.g. COM11 on Windows and /dev/ttyUSB0 on linux
 
     Returns:
-        response, as a floating-point value
+        response, as the appropriate response type for the given command
     Raises:
         InvalidYsiResponse if response packet is invalid after retries
     """
@@ -75,7 +98,9 @@ def _get_sensor_reading(port: str, command: YSICommand) -> str:
         timeout=1,
     )
 
-    return parse_ysi_response(response_bytes)
+    return parse_response_packet(
+        response_bytes, expected_response_type=command.expected_response_type
+    )
 
 
 get_sensor_reading_with_retry = retry_on_exception(InvalidYsiResponse)(
@@ -108,6 +133,7 @@ def get_standard_sensor_values(port):
 
     return pd.Series(
         {
+            "Unit ID": get_sensor_reading_with_retry(port, YSICommand.get_unit_id),
             "barometric pressure (mmHg)": barometric_pressure_mmhg,
             "DO (mg/L)": get_sensor_reading_with_retry(port, YSICommand.get_do_mg_l),
             "DO (% sat)": do_percent_saturation,

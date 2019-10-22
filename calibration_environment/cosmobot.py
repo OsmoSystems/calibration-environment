@@ -35,7 +35,7 @@ def _generate_run_experiment_command(experiment_name, duration, exposure_time):
     )
     variant_params = f"-ISO 100 --led-on{exposure_time_arg}"
     run_experiment_command = (
-        f"{run_experiment_path} --name {experiment_name} --group-results --interval 9"
+        f"{run_experiment_path} --name {experiment_name} --group-results --erase-synced-files --interval 9"
         f' --duration {duration} --variant "{variant_params}"'
     )
 

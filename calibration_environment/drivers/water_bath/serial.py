@@ -275,7 +275,7 @@ def send_command(port: str, command_packet: SerialPacket) -> SerialPacket:
     except Exception as e:
         raise InvalidResponse(
             f"\nUnable to parse response from water bath. "
-            f"\nResponse bytes: {response_bytes}. "
+            f"\nResponse bytes: {response_bytes!r}. "
             f"\nError: {e}. "
             f"\nPossible solution: ensure the bath is in 'serial communication' mode"
         )

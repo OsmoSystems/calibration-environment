@@ -157,9 +157,8 @@ class TestGetStandardSensorValues:
         def fake_get_sensor_reading_with_retry(port, command):
             if command == module.YSICommand.get_unit_id:
                 return unit_id
-            return (
-                5
-            )  # Just a number... has to be a number, not a sentinel, because we do math with it
+            # We have to return a number, not a sentinel, because the code does math with it
+            return 5
 
         mocker.patch.object(
             module,

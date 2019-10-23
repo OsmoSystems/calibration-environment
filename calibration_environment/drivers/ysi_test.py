@@ -4,33 +4,53 @@ import pytest
 
 import calibration_environment.drivers.ysi as module
 
+VALID_NUMBER_AS_BYTES = b"49.9"
 
-class TestParseYsiResponse:
-    valid_number = b"49.9"
 
-    def test_parses_valid_response(self):
+class TestYSICommand:
+    def test_response_parser_for_string_can_parse_real_value(self):
+        response_payload = "OSMO%20YSI%20ODO%201"
+        expected = "OSMO YSI ODO 1"
+        assert (
+            module.YSICommand.get_unit_id.response_payload_parser(response_payload)
+            == expected
+        )
+
+    def test_response_parser_for_float_can_parse_real_value(self):
+        response_payload = VALID_NUMBER_AS_BYTES
+        expected = 49.9
+        assert (
+            module.YSICommand.get_temp_c.response_payload_parser(response_payload)
+            == expected
+        )
+
+
+class TestParseResponsePacket:
+    def test_parses_valid_response_using_payload_parser(self):
         valid_ysi_response = (
             module._YSI_RESPONSE_INITIATOR
-            + self.valid_number
+            + VALID_NUMBER_AS_BYTES
             + module._YSI_RESPONSE_TERMINATOR
         )
-        assert module.parse_ysi_response(valid_ysi_response) == 49.9
+        assert module.parse_response_packet(valid_ysi_response, float) == 49.9
 
     @pytest.mark.parametrize(
         "name, invalid_ysi_response, expected_error_message_content",
         [
             (
                 "invalid terminator",
-                module._YSI_RESPONSE_INITIATOR + valid_number + b"get to da choppah",
+                module._YSI_RESPONSE_INITIATOR
+                + VALID_NUMBER_AS_BYTES
+                + b"get to da choppah",
                 "terminator",
             ),
             (
                 "invalid initiator",
-                b"ohai" + valid_number + module._YSI_RESPONSE_TERMINATOR,
+                b"ohai" + VALID_NUMBER_AS_BYTES + module._YSI_RESPONSE_TERMINATOR,
                 "initiator",
             ),
             (
-                "invalid float",
+                "can't be converted to expected response type",
                 module._YSI_RESPONSE_INITIATOR
                 + b"schwifty five"
                 + module._YSI_RESPONSE_TERMINATOR,
@@ -40,13 +60,13 @@ class TestParseYsiResponse:
             ("weird garbage", b"$$$\r\n$ACK\r\n\r\n$ACK\r\n", None),
         ],
     )
-    def test_blows_up_if_response_terminator_invalid(
+    def test_blows_up_on_invalid_response(
         self, name, invalid_ysi_response, expected_error_message_content
     ):
         with pytest.raises(
             module.InvalidYsiResponse, match=expected_error_message_content
         ):
-            module.parse_ysi_response(invalid_ysi_response)
+            module.parse_response_packet(invalid_ysi_response, payload_parser=float)
 
 
 class TestGetSensorReading:
@@ -72,7 +92,7 @@ class TestGetSensorReading:
 
 
 class TestGetStandardSensorValues:
-    def test_reports_partial_pressure(self, mocker):
+    def test_reports_expected_values_including_partial_pressure(self, mocker):
         do_percent_saturation = 20.0
         barometric_pressure_mmhg = 700.0
         expected_do_partial_pressure_mmhg = 29.33
@@ -98,3 +118,22 @@ class TestGetStandardSensorValues:
             sensor_values[do_partial_pressure_field_name]
             == expected_do_partial_pressure_mmhg
         )
+
+    def test_reports_unit_id(self, mocker):
+        unit_id = "Bob"
+
+        def fake_get_sensor_reading_with_retry(port, command):
+            if command == module.YSICommand.get_unit_id:
+                return unit_id
+            # We have to return a number, not a sentinel, because the code does math with it
+            return 5
+
+        mocker.patch.object(
+            module,
+            "get_sensor_reading_with_retry",
+            side_effect=fake_get_sensor_reading_with_retry,
+        )
+
+        sensor_values = module.get_standard_sensor_values(sentinel.port)
+
+        assert sensor_values["Unit ID"] == unit_id

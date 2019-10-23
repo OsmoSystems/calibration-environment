@@ -35,7 +35,7 @@ def send_serial_command_and_get_response(
         serial.SerialException if serial port can't be opened
         ValueError if parameters are out of range, e.g. baud rate etc.
     """
-    logger.debug(f"Serial command on {port}: {command}")
+    logger.debug(f"Serial command on {port}: {command!r}")
 
     with serial.Serial(port, baudrate=baud_rate, timeout=timeout) as connection:
         connection.write(command)

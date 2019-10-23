@@ -23,14 +23,13 @@ class YSICommand(str, Enum):
     get_unit_id = "Get UnitID"
 
     @property
-    def _command_prefix(self) -> str:
+    def command_prefix(self) -> str:
+        """ Prefix used when packing this into a command packet """
         return "INFO" if self == YSICommand.get_unit_id else "ADC"
-
-    def to_bytes_packet(self) -> bytes:
-        return bytes(f"${self._command_prefix} {self.value}\r\n", encoding="utf8")
 
     @property
     def expected_response_type(self) -> Type:
+        """ The data type that we expect the YSI to respond with when we send this command """
         return str if self == YSICommand.get_unit_id else float
 
 
@@ -78,6 +77,10 @@ def parse_response_packet(response_bytes: bytes, expected_response_type: Type):
     return _parse_response_payload(response_substr, expected_response_type)
 
 
+def _create_command_packet(command: YSICommand):
+    return bytes(f"${command.command_prefix} {command.value}\r\n", encoding="utf8")
+
+
 def _get_sensor_reading(port: str, command: YSICommand):
     """ Given a serial command, send it on a serial port and return the response.
     Handles YSI default serial settings and stuff.
@@ -94,7 +97,7 @@ def _get_sensor_reading(port: str, command: YSICommand):
 
     response_bytes = send_serial_command_and_get_response(
         port=port,
-        command=command.to_bytes_packet(),
+        command=_create_command_packet(command),
         response_terminator=_YSI_RESPONSE_TERMINATOR,
         baud_rate=_YSI_BAUD_RATE,
         timeout=1,

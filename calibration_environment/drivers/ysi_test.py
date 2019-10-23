@@ -7,58 +7,24 @@ import calibration_environment.drivers.ysi as module
 VALID_NUMBER_AS_BYTES = b"49.9"
 
 
-class TestParseResponsePayload:
-    @pytest.mark.parametrize(
-        "response_payload, expected_response_type, expected_decoded_response",
-        [("49.9", float, 49.9), ("OSMO%20YSI%20ODO%201", str, "OSMO YSI ODO 1")],
-    )
-    def test_parses_valid_responses_properly(
-        self, response_payload, expected_response_type, expected_decoded_response
-    ):
+class TestYSICommand:
+    def test_response_parser_for_string_can_parse_real_value(self):
+        response_payload = "OSMO%20YSI%20ODO%201"
+        expected = "OSMO YSI ODO 1"
         assert (
-            module._parse_response_payload(
-                response_payload, expected_response_type=expected_response_type
-            )
-            == expected_decoded_response
+            module.YSICommand.get_unit_id.response_payload_parser(response_payload)
+            == expected
         )
-
-    def test_raises_ysi_response_error_on_invalid_float(self):
-        with pytest.raises(
-            module.InvalidYsiResponse,
-            match="could not be converted to expected response type",
-        ):
-            module._parse_response_payload(
-                "definitely not a float", expected_response_type=float
-            )
-
-    def test_raises_valueerror_on_unknown_type(self):
-        with pytest.raises(ValueError, match="don't know how to parse"):
-            module._parse_response_payload("{abc:123}", expected_response_type=dict)
 
 
 class TestParseResponse:
-    def test_parses_valid_response(self):
+    def test_parses_valid_response_using_payload_parser(self):
         valid_ysi_response = (
             module._YSI_RESPONSE_INITIATOR
             + VALID_NUMBER_AS_BYTES
             + module._YSI_RESPONSE_TERMINATOR
         )
         assert module.parse_response_packet(valid_ysi_response, float) == 49.9
-
-    def test_uses_helper_function_to_decode_content(self, mocker):
-        mock_payload_parser = mocker.patch.object(module, "_parse_response_payload")
-        payload_bytes = b"payload!!"
-        payload_str = "payload!!"
-        valid_ysi_response = (
-            module._YSI_RESPONSE_INITIATOR
-            + payload_bytes
-            + module._YSI_RESPONSE_TERMINATOR
-        )
-        assert (
-            module.parse_response_packet(valid_ysi_response, float)
-            == mock_payload_parser.return_value
-        )
-        mock_payload_parser.assert_called_once_with(payload_str, float)
 
     @pytest.mark.parametrize(
         "name, invalid_ysi_response, expected_error_message_content",
@@ -92,9 +58,7 @@ class TestParseResponse:
         with pytest.raises(
             module.InvalidYsiResponse, match=expected_error_message_content
         ):
-            module.parse_response_packet(
-                invalid_ysi_response, expected_response_type=float
-            )
+            module.parse_response_packet(invalid_ysi_response, payload_parser=float)
 
 
 class TestGetSensorReading:

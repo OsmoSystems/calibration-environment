@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Type
+from typing import Callable
 from urllib.parse import unquote
 
 import pandas as pd
@@ -28,9 +28,13 @@ class YSICommand(str, Enum):
         return "INFO" if self == YSICommand.get_unit_id else "ADC"
 
     @property
-    def expected_response_type(self) -> Type:
-        """ The data type that we expect the YSI to respond with when we send this command """
-        return str if self == YSICommand.get_unit_id else float
+    def response_payload_parser(self):
+        """ Method to parse the response payload (extracted form the response packet) into a clean object """
+        return (
+            unquote  # The response to Get UnitID is a urlencoded string (with %20 for spaces, for example)
+            if self == YSICommand.get_unit_id
+            else float
+        )
 
 
 _YSI_RESPONSE_TERMINATOR = b"\r\n$ACK\r\n"
@@ -38,26 +42,7 @@ _YSI_RESPONSE_INITIATOR = b"$"
 _YSI_BAUD_RATE = 57600
 
 
-def _parse_response_payload(raw_content_str: str, expected_response_type: Type):
-    """ take a YSI response payload that has already been unpacked from the response packet
-    and parse it as the expected type.
-    """
-    if expected_response_type == str:
-        return unquote(raw_content_str)
-    elif expected_response_type == float:
-        try:
-            return float(raw_content_str)
-        except ValueError:
-            raise InvalidYsiResponse(
-                f'"{raw_content_str}" could not be converted to expected response type {expected_response_type}'
-            )
-    else:
-        raise ValueError(
-            f"I don't know how to parse the expected response type {expected_response_type} from YSI data"
-        )
-
-
-def parse_response_packet(response_bytes: bytes, expected_response_type: Type):
+def parse_response_packet(response_bytes: bytes, payload_parser: Callable):
     """ Response format is something like "$49.9\r\n$ACK\r\n" for 49.9
     """
     if not response_bytes.endswith(_YSI_RESPONSE_TERMINATOR):
@@ -74,7 +59,13 @@ def parse_response_packet(response_bytes: bytes, expected_response_type: Type):
         len(_YSI_RESPONSE_INITIATOR) : -len(_YSI_RESPONSE_TERMINATOR)
     ]
 
-    return _parse_response_payload(response_substr, expected_response_type)
+    try:
+        return payload_parser(response_substr)
+    except ValueError:
+        raise InvalidYsiResponse(
+            f'"{response_substr!r}" from within YSI response {response_bytes!r} '
+            f"could not be parsed using {payload_parser}"
+        )
 
 
 def _create_command_packet(command: YSICommand):
@@ -104,7 +95,7 @@ def _get_sensor_reading(port: str, command: YSICommand):
     )
 
     return parse_response_packet(
-        response_bytes, expected_response_type=command.expected_response_type
+        response_bytes, payload_parser=command.response_payload_parser
     )
 
 

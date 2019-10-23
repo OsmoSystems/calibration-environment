@@ -7,7 +7,7 @@ import calibration_environment.drivers.ysi as module
 VALID_NUMBER_AS_BYTES = b"49.9"
 
 
-class TestDecodeResponsePayload:
+class TestParseResponsePayload:
     @pytest.mark.parametrize(
         "response_payload, expected_response_type, expected_decoded_response",
         [("49.9", float, 49.9), ("OSMO%20YSI%20ODO%201", str, "OSMO YSI ODO 1")],
@@ -16,7 +16,7 @@ class TestDecodeResponsePayload:
         self, response_payload, expected_response_type, expected_decoded_response
     ):
         assert (
-            module._decode_response_payload(
+            module._parse_response_payload(
                 response_payload, expected_response_type=expected_response_type
             )
             == expected_decoded_response
@@ -27,13 +27,13 @@ class TestDecodeResponsePayload:
             module.InvalidYsiResponse,
             match="could not be converted to expected response type",
         ):
-            module._decode_response_payload(
+            module._parse_response_payload(
                 "definitely not a float", expected_response_type=float
             )
 
     def test_raises_valueerror_on_unknown_type(self):
         with pytest.raises(ValueError, match="don't know how to parse"):
-            module._decode_response_payload("{abc:123}", expected_response_type=dict)
+            module._parse_response_payload("{abc:123}", expected_response_type=dict)
 
 
 class TestParseResponse:
@@ -46,7 +46,7 @@ class TestParseResponse:
         assert module.parse_response_packet(valid_ysi_response, float) == 49.9
 
     def test_uses_helper_function_to_decode_content(self, mocker):
-        mock_payload_decoder = mocker.patch.object(module, "_decode_response_payload")
+        mock_payload_parser = mocker.patch.object(module, "_parse_response_payload")
         payload_bytes = b"payload!!"
         payload_str = "payload!!"
         valid_ysi_response = (
@@ -56,9 +56,9 @@ class TestParseResponse:
         )
         assert (
             module.parse_response_packet(valid_ysi_response, float)
-            == mock_payload_decoder.return_value
+            == mock_payload_parser.return_value
         )
-        mock_payload_decoder.assert_called_once_with(payload_str, float)
+        mock_payload_parser.assert_called_once_with(payload_str, float)
 
     @pytest.mark.parametrize(
         "name, invalid_ysi_response, expected_error_message_content",

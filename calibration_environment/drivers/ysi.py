@@ -23,9 +23,12 @@ class YSICommand(str, Enum):
 
     get_unit_id = "Get UnitID"
 
+    @property
+    def _command_prefix(self) -> str:
+        return "INFO" if self == YSICommand.get_unit_id else "ADC"
+
     def to_bytes_packet(self) -> bytes:
-        prefix = "INFO" if self == YSICommand.get_unit_id else "ADC"
-        return bytes(f"${prefix} {self.value}\r\n", encoding="utf8")
+        return bytes(f"${self._command_prefix} {self.value}\r\n", encoding="utf8")
 
     @property
     def expected_response_type(self) -> Type:
@@ -37,7 +40,7 @@ _YSI_RESPONSE_INITIATOR = b"$"
 _YSI_BAUD_RATE = 57600
 
 
-def _decode_response_payload(raw_content_str: str, expected_response_type: Type):
+def _parse_response_payload(raw_content_str: str, expected_response_type: Type):
     """ take a YSI response payload that has already been unpacked from the response packet
     and parse it as the expected type.
     """
@@ -73,7 +76,7 @@ def parse_response_packet(response_bytes: bytes, expected_response_type: Type):
         len(_YSI_RESPONSE_INITIATOR) : -len(_YSI_RESPONSE_TERMINATOR)
     ]
 
-    return _decode_response_payload(response_substr, expected_response_type)
+    return _parse_response_payload(response_substr, expected_response_type)
 
 
 def _get_sensor_reading(port: str, command: YSICommand):

@@ -14,7 +14,7 @@ class InvalidYsiResponse(Exception):
     pass
 
 
-class YSICommand(str, Enum):
+class YSICommand(Enum):
     get_barometric_pressure_mmhg = "Get Normal SENSOR_BAR_MMHG"
     get_barometric_pressure_kpa = "Get Normal SENSOR_BAR_KPA"
     get_do_pct_sat = "Get Normal SENSOR_DO_PERCENT_SAT"

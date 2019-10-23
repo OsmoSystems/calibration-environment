@@ -25,7 +25,7 @@ class TestYSICommand:
         )
 
 
-class TestParseResponse:
+class TestParseResponsePacket:
     def test_parses_valid_response_using_payload_parser(self):
         valid_ysi_response = (
             module._YSI_RESPONSE_INITIATOR
@@ -114,10 +114,6 @@ class TestGetStandardSensorValues:
         sensor_values = module.get_standard_sensor_values(sentinel.port)
 
         assert do_partial_pressure_field_name in sensor_values
-        assert (
-            sensor_values[do_partial_pressure_field_name]
-            == expected_do_partial_pressure_mmhg
-        )
         assert (
             sensor_values[do_partial_pressure_field_name]
             == expected_do_partial_pressure_mmhg

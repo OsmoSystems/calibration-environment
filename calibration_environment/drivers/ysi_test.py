@@ -16,6 +16,14 @@ class TestYSICommand:
             == expected
         )
 
+    def test_response_parser_for_float_can_parse_real_value(self):
+        response_payload = VALID_NUMBER_AS_BYTES
+        expected = 49.9
+        assert (
+            module.YSICommand.get_temp_c.response_payload_parser(response_payload)
+            == expected
+        )
+
 
 class TestParseResponse:
     def test_parses_valid_response_using_payload_parser(self):

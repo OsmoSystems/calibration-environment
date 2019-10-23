@@ -20,7 +20,6 @@ class YSICommand(str, Enum):
     get_do_pct_sat = "Get Normal SENSOR_DO_PERCENT_SAT"
     get_do_mg_l = "Get Normal SENSOR_DO_MG_L"
     get_temp_c = "Get Normal SENSOR_TEMP_C"
-
     get_unit_id = "Get UnitID"
 
     @property

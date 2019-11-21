@@ -30,8 +30,12 @@ class TestParseArgs:
             "cosmohostname2",
             "--cosmobot-experiment-name",
             "experiment1",
+            "--cosmobot-interval",
+            "4.9",
             "--cosmobot-exposure-time",
             "0.5",
+            "--cosmobot-camera-warm-up",
+            "2.5",
         ]
 
         expected_args_out = {
@@ -44,7 +48,9 @@ class TestParseArgs:
             "collection_interval": 50,
             "cosmobot_experiment_name": "experiment1",
             "cosmobot_hostnames": ["cosmohostname1", "cosmohostname2"],
+            "cosmobot_interval": 4.9,
             "cosmobot_exposure_time": 0.5,
+            "cosmobot_camera_warm_up": 2.5,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -62,7 +68,9 @@ class TestParseArgs:
             "collection_interval": 60,
             "cosmobot_hostnames": None,
             "cosmobot_experiment_name": None,
+            "cosmobot_interval": None,
             "cosmobot_exposure_time": None,
+            "cosmobot_camera_warm_up": None,
         }
 
         assert module._parse_args(args_in) == expected_args_out
@@ -77,28 +85,28 @@ class TestParseArgs:
         with pytest.raises(SystemExit):
             module._parse_args(args_in)
 
-    def test_raises_on_missing_cosmobot_hostnames_for_experiment_name(self):
-        args_in = [
+    @pytest.mark.parametrize(
+        "cosmobot_args",
+        (
+            ["--cosmobot-experiment-name", "experiment_name"],
+            ["--cosmobot-hostname", "hostname"],
+            ["--cosmobot-interval", "123"],
+            [
+                "--cosmobot-experiment-name",
+                "experiment_name",
+                "--cosmobot-hostname",
+                "hostname",
+            ],
+        ),
+    )
+    def test_raises_on_missing_cosmobot_args(self, cosmobot_args):
+        minimal_args_in = [
             "-s",
             "experiment.csv",
             "-o2",
             ".21",
-            "--cosmobot-experiment-name",
-            "experiment_name",
         ]
-
-        with pytest.raises(SystemExit):
-            module._parse_args(args_in)
-
-    def test_raises_on_missing_cosmobot_experiment_name_for_hostnames(self):
-        args_in = [
-            "-s",
-            "experiment.csv",
-            "-o2",
-            ".21",
-            "--cosmobot-hostname",
-            "192.168.1.1",
-        ]
+        args_in = minimal_args_in + cosmobot_args
 
         with pytest.raises(SystemExit):
             module._parse_args(args_in)
@@ -130,7 +138,9 @@ class TestGetCalibrationConfiguration:
             collection_interval=60,
             cosmobot_experiment_name=None,
             cosmobot_hostnames=None,
+            cosmobot_interval=None,
             cosmobot_exposure_time=None,
+            cosmobot_camera_warm_up=None,
             capture_images=False,
         )
 

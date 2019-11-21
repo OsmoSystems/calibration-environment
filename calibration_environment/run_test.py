@@ -75,7 +75,9 @@ DEFAULT_CONFIGURATION = CalibrationConfiguration(
     collection_interval=0.01,
     cosmobot_experiment_name=None,
     cosmobot_hostnames=None,
+    cosmobot_interval=None,
     cosmobot_exposure_time=None,
+    cosmobot_camera_warm_up=None,
     capture_images=False,
 )
 
@@ -324,6 +326,7 @@ class TestRunCalibration:
             capture_images=True,
             cosmobot_hostnames=hostnames,
             cosmobot_experiment_name=sentinel.experiment_name,
+            cosmobot_interval=sentinel.cosmobot_interval,
         )
 
         module.run([])
@@ -349,7 +352,9 @@ class TestRunCalibration:
             capture_images=True,
             cosmobot_hostnames=hostnames,
             cosmobot_experiment_name=sentinel.experiment_name,
+            cosmobot_interval=sentinel.cosmobot_interval,
             cosmobot_exposure_time=sentinel.exposure_time,
+            cosmobot_camera_warm_up=sentinel.camera_warm_up,
         )
 
         mock_cosmobot_module.get_ssh_client.return_value = sentinel.ssh_client
@@ -362,7 +367,9 @@ class TestRunCalibration:
             sentinel.ssh_client,
             sentinel.experiment_name,
             DEFAULT_SETPOINTS["hold_time"][0],
+            sentinel.cosmobot_interval,
             sentinel.exposure_time,
+            sentinel.camera_warm_up,
         )
         mock_cosmobot_module.wait_for_exit.assert_called_once_with(
             sentinel.experiment_streams

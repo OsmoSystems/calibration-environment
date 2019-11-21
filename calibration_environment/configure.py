@@ -23,7 +23,9 @@ CalibrationConfiguration = namedtuple(
         "collection_interval",
         "cosmobot_hostnames",
         "cosmobot_experiment_name",
+        "cosmobot_interval",
         "cosmobot_exposure_time",
+        "cosmobot_camera_warm_up",
         "capture_images",
     ],
 )
@@ -67,9 +69,21 @@ def _parse_args(args: List[str]) -> Dict:
     )
 
     arg_parser.add_argument(
+        "--cosmobot-interval",
+        type=float,
+        help="minimum interval between image capture in seconds for run_experiment",
+    )
+
+    arg_parser.add_argument(
         "--cosmobot-exposure-time",
         type=float,
         help="exposure time in seconds for run_experiment",
+    )
+
+    arg_parser.add_argument(
+        "--cosmobot-camera-warm-up",
+        type=float,
+        help="--camera-warm-up value to pass to run_experiment",
     )
 
     arg_parser.add_argument(
@@ -118,11 +132,12 @@ def _parse_args(args: List[str]) -> Dict:
 
     cosmobot_experiment_name = calibration_arg_namespace.cosmobot_experiment_name
     cosmobot_hostnames = calibration_arg_namespace.cosmobot_hostnames
-    if any([cosmobot_experiment_name, cosmobot_hostnames]) and not all(
-        [cosmobot_experiment_name, cosmobot_hostnames]
-    ):
+    cosmobot_interval = calibration_arg_namespace.cosmobot_interval
+    if any(
+        [cosmobot_experiment_name, cosmobot_hostnames, cosmobot_interval]
+    ) and not all([cosmobot_experiment_name, cosmobot_hostnames, cosmobot_interval]):
         arg_parser.error(
-            "--cosmobot-experiment-name and --cosmobot-hostname must be provided together"
+            "--cosmobot-experiment-name, --cosmobot-hostname, and --cosmobot-interval must be provided together"
         )
 
     return vars(calibration_arg_namespace)
@@ -177,7 +192,9 @@ def get_calibration_configuration(
         collection_interval=args["collection_interval"],
         cosmobot_experiment_name=unique_cosmobot_experiment_name,
         cosmobot_hostnames=args["cosmobot_hostnames"],
+        cosmobot_interval=args["cosmobot_interval"],
         cosmobot_exposure_time=args["cosmobot_exposure_time"],
+        cosmobot_camera_warm_up=args["cosmobot_camera_warm_up"],
         capture_images=bool(args["cosmobot_hostnames"]),
     )
 

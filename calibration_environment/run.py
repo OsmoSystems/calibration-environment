@@ -129,7 +129,9 @@ def run(cli_args=None):
                             cosmobot_ssh_client,
                             calibration_configuration.cosmobot_experiment_name,
                             setpoint["hold_time"],
+                            calibration_configuration.cosmobot_interval,
                             calibration_configuration.cosmobot_exposure_time,
+                            calibration_configuration.cosmobot_camera_warm_up,
                         )
                         for cosmobot_ssh_client in cosmobot_ssh_clients
                     ]

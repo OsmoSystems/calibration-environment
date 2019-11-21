@@ -28,15 +28,24 @@ def get_ssh_client(cosmobot_hostname: str) -> paramiko.client.SSHClient:
     return client
 
 
-def _generate_run_experiment_command(experiment_name, duration, exposure_time):
+def _generate_run_experiment_command(
+    experiment_name, duration, interval, exposure_time, camera_warm_up
+):
     run_experiment_path = "/home/pi/.local/bin/run_experiment"
-    exposure_time_arg = (
-        f" --exposure-time {exposure_time}" if exposure_time is not None else ""
-    )
-    variant_params = f"-ISO 100 --led-on{exposure_time_arg}"
+
+    variant_args = ["-ISO 100", "--led-on"]
+
+    if exposure_time is not None:
+        variant_args.append(f"--exposure-time {exposure_time}")
+
+    if camera_warm_up is not None:
+        variant_args.append(f"--camera-warm-up {camera_warm_up}")
+
+    variant_arg_string = " ".join(variant_args)
+
     run_experiment_command = (
-        f"{run_experiment_path} --name {experiment_name} --group-results --erase-synced-files --interval 9"
-        f' --duration {duration} --variant "{variant_params}"'
+        f"{run_experiment_path} --name {experiment_name} --group-results --erase-synced-files --interval {interval}"
+        f' --duration {duration} --variant "{variant_arg_string}"'
     )
 
     return run_experiment_command
@@ -49,19 +58,25 @@ def run_experiment(
     ssh_client: paramiko.client.SSHClient,
     experiment_name: str,
     duration: int,
+    interval: float,
     exposure_time: float = None,
+    camera_warm_up: float = None,
 ) -> ExperimentStreams:
     """Run run_experiment (image capture program) on the cosmobot with the given name and duration
 
     Args:
+        ssh_client: paramiko SSHClient connected to a Cosmobot
         experiment_name: experiment name to pass to run_experiment
         duration: duration to pass to run_experiment
+        interval: --interval value for run_experiment
+        exposure_time: --exposure value for run_experiment
+        camera_warm_up: --camera-warm-up for run_experiment
 
     Returns: ExperimentStreams object
     """
 
     run_experiment_command = _generate_run_experiment_command(
-        experiment_name, duration, exposure_time
+        experiment_name, duration, interval, exposure_time, camera_warm_up
     )
 
     hostname = ssh_client.get_transport().hostname

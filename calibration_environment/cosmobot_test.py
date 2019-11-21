@@ -8,22 +8,30 @@ from . import cosmobot as module
 class TestGenerateRunExperimentCommand:
     def test_generates_expected_command(self):
         actual_command = module._generate_run_experiment_command(
-            experiment_name="experiment_name", duration="90", exposure_time=0.1234
+            experiment_name="experiment_name",
+            duration="90",
+            interval=5.9,
+            exposure_time=0.1234,
+            camera_warm_up=1.5,
         )
         expected_command = (
             f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results --erase-synced-files"
-            f' --interval 9 --duration 90 --variant "-ISO 100 --led-on --exposure-time 0.1234"'
+            f' --interval 5.9 --duration 90 --variant "-ISO 100 --led-on --exposure-time 0.1234 --camera-warm-up 1.5"'
         )
 
         assert actual_command == expected_command
 
     def test_excludes_exposure_time_if_none(self):
         actual_command = module._generate_run_experiment_command(
-            experiment_name="experiment_name", duration="90", exposure_time=None
+            experiment_name="experiment_name",
+            interval=5.4,
+            duration="90",
+            exposure_time=None,
+            camera_warm_up=None,
         )
         expected_command = (
             f"/home/pi/.local/bin/run_experiment --name experiment_name --group-results --erase-synced-files"
-            f' --interval 9 --duration 90 --variant "-ISO 100 --led-on"'
+            f' --interval 5.4 --duration 90 --variant "-ISO 100 --led-on"'
         )
 
         assert actual_command == expected_command
